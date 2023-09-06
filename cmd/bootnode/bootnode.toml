@@ -1,0 +1,3 @@
+[node]
+NodeKey = "/home/sachin/Downloads/go-jumbochain/cmd/bootnode/bootnode.key"
+ListenAddr = "127.0.0.1:30301"

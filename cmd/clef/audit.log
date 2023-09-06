@@ -1,0 +1,34 @@
+t=2023-08-11T16:32:00+0530 lvl=info msg=Configured api=signer audit log=audit.log
+t=2023-08-11T16:39:47+0530 lvl=info msg=Configured api=signer audit log=audit.log
+t=2023-08-11T17:15:11+0530 lvl=info msg=Version    api=signer type=request metadata="{\"remote\":\"NA\",\"local\":\"NA\",\"scheme\":\"ipc\",\"User-Agent\":\"\",\"Origin\":\"\"}"
+t=2023-08-11T17:15:11+0530 lvl=info msg=Version    api=signer type=response data=6.1.0 error=nil
+t=2023-08-11T17:19:52+0530 lvl=info msg=List       api=signer type=request  metadata="{\"remote\":\"NA\",\"local\":\"NA\",\"scheme\":\"ipc\",\"User-Agent\":\"\",\"Origin\":\"\"}"
+t=2023-08-11T17:20:54+0530 lvl=info msg=List       api=signer type=response data=[0x99792fd5903D719646CD33F46F0c3421e71846c9]
+t=2023-08-11T17:21:24+0530 lvl=info msg=List       api=signer type=request  metadata="{\"remote\":\"NA\",\"local\":\"NA\",\"scheme\":\"ipc\",\"User-Agent\":\"\",\"Origin\":\"\"}"
+t=2023-08-11T17:21:32+0530 lvl=info msg=List       api=signer type=response data=[0x99792fd5903D719646CD33F46F0c3421e71846c9]
+t=2023-08-12T11:28:05+0530 lvl=info msg=Configured api=signer audit log=audit.log
+t=2023-08-14T06:31:21+0530 lvl=info msg=Configured api=signer audit log=audit.log
+t=2023-08-14T06:52:21+0530 lvl=info msg=Version    api=signer type=request metadata="{\"remote\":\"NA\",\"local\":\"NA\",\"scheme\":\"ipc\",\"User-Agent\":\"\",\"Origin\":\"\"}"
+t=2023-08-14T06:52:21+0530 lvl=info msg=Version    api=signer type=response data=6.1.0 error=nil
+t=2023-08-14T10:10:33+0530 lvl=info msg=Version    api=signer type=request  metadata="{\"remote\":\"NA\",\"local\":\"NA\",\"scheme\":\"ipc\",\"User-Agent\":\"\",\"Origin\":\"\"}"
+t=2023-08-14T10:10:33+0530 lvl=info msg=Version    api=signer type=response data=6.1.0 error=nil
+t=2023-08-16T18:40:34+0530 lvl=info msg=Configured api=signer audit log=audit.log
+t=2023-08-16T18:42:33+0530 lvl=info msg=Version    api=signer type=request metadata="{\"remote\":\"NA\",\"local\":\"NA\",\"scheme\":\"ipc\",\"User-Agent\":\"\",\"Origin\":\"\"}"
+t=2023-08-16T18:42:33+0530 lvl=info msg=Version    api=signer type=response data=6.1.0 error=nil
+t=2023-08-17T10:31:11+0530 lvl=info msg=Configured api=signer audit log=audit.log
+t=2023-08-17T10:32:06+0530 lvl=info msg=Version    api=signer type=request metadata="{\"remote\":\"NA\",\"local\":\"NA\",\"scheme\":\"ipc\",\"User-Agent\":\"\",\"Origin\":\"\"}"
+t=2023-08-17T10:32:06+0530 lvl=info msg=Version    api=signer type=response data=6.1.0 error=nil
+t=2023-08-18T12:48:10+0530 lvl=info msg=Configured api=signer audit log=audit.log
+t=2023-08-18T12:50:12+0530 lvl=info msg=Version    api=signer type=request metadata="{\"remote\":\"NA\",\"local\":\"NA\",\"scheme\":\"ipc\",\"User-Agent\":\"\",\"Origin\":\"\"}"
+t=2023-08-18T12:50:12+0530 lvl=info msg=Version    api=signer type=response data=6.1.0 error=nil
+t=2023-08-19T11:16:59+0530 lvl=info msg=Configured api=signer audit log=audit.log
+t=2023-08-19T11:18:19+0530 lvl=info msg=Version    api=signer type=request metadata="{\"remote\":\"NA\",\"local\":\"NA\",\"scheme\":\"ipc\",\"User-Agent\":\"\",\"Origin\":\"\"}"
+t=2023-08-19T11:18:19+0530 lvl=info msg=Version    api=signer type=response data=6.1.0 error=nil
+t=2023-08-21T09:58:20+0530 lvl=info msg=Configured api=signer audit log=audit.log
+t=2023-08-21T09:59:01+0530 lvl=info msg=Version    api=signer type=request metadata="{\"remote\":\"NA\",\"local\":\"NA\",\"scheme\":\"ipc\",\"User-Agent\":\"\",\"Origin\":\"\"}"
+t=2023-08-21T09:59:01+0530 lvl=info msg=Version    api=signer type=response data=6.1.0 error=nil
+t=2023-08-22T16:53:32+0530 lvl=info msg=Configured api=signer audit log=audit.log
+t=2023-08-22T16:53:57+0530 lvl=info msg=Version    api=signer type=request metadata="{\"remote\":\"NA\",\"local\":\"NA\",\"scheme\":\"ipc\",\"User-Agent\":\"\",\"Origin\":\"\"}"
+t=2023-08-22T16:53:57+0530 lvl=info msg=Version    api=signer type=response data=6.1.0 error=nil
+t=2023-09-05T12:48:38+0530 lvl=info msg=Configured api=signer audit log=audit.log
+t=2023-09-05T12:59:31+0530 lvl=info msg=Configured api=signer audit log=audit.log

@@ -1,0 +1,207 @@
+{
+	"compiler": {
+		"version": "0.6.0+commit.26b70077"
+	},
+	"language": "Solidity",
+	"output": {
+		"abi": [
+			{
+				"inputs": [
+					{
+						"internalType": "address[]",
+						"name": "_adminlist",
+						"type": "address[]"
+					},
+					{
+						"internalType": "uint256",
+						"name": "_sectionSize",
+						"type": "uint256"
+					},
+					{
+						"internalType": "uint256",
+						"name": "_processConfirms",
+						"type": "uint256"
+					},
+					{
+						"internalType": "uint256",
+						"name": "_threshold",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "nonpayable",
+				"type": "constructor"
+			},
+			{
+				"anonymous": false,
+				"inputs": [
+					{
+						"indexed": true,
+						"internalType": "uint64",
+						"name": "index",
+						"type": "uint64"
+					},
+					{
+						"indexed": false,
+						"internalType": "bytes32",
+						"name": "checkpointHash",
+						"type": "bytes32"
+					},
+					{
+						"indexed": false,
+						"internalType": "uint8",
+						"name": "v",
+						"type": "uint8"
+					},
+					{
+						"indexed": false,
+						"internalType": "bytes32",
+						"name": "r",
+						"type": "bytes32"
+					},
+					{
+						"indexed": false,
+						"internalType": "bytes32",
+						"name": "s",
+						"type": "bytes32"
+					}
+				],
+				"name": "NewCheckpointVote",
+				"type": "event"
+			},
+			{
+				"inputs": [],
+				"name": "GetAllAdmin",
+				"outputs": [
+					{
+						"internalType": "address[]",
+						"name": "",
+						"type": "address[]"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "GetLatestCheckpoint",
+				"outputs": [
+					{
+						"internalType": "uint64",
+						"name": "",
+						"type": "uint64"
+					},
+					{
+						"internalType": "bytes32",
+						"name": "",
+						"type": "bytes32"
+					},
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "uint256",
+						"name": "_recentNumber",
+						"type": "uint256"
+					},
+					{
+						"internalType": "bytes32",
+						"name": "_recentHash",
+						"type": "bytes32"
+					},
+					{
+						"internalType": "bytes32",
+						"name": "_hash",
+						"type": "bytes32"
+					},
+					{
+						"internalType": "uint64",
+						"name": "_sectionIndex",
+						"type": "uint64"
+					},
+					{
+						"internalType": "uint8[]",
+						"name": "v",
+						"type": "uint8[]"
+					},
+					{
+						"internalType": "bytes32[]",
+						"name": "r",
+						"type": "bytes32[]"
+					},
+					{
+						"internalType": "bytes32[]",
+						"name": "s",
+						"type": "bytes32[]"
+					}
+				],
+				"name": "SetCheckpoint",
+				"outputs": [
+					{
+						"internalType": "bool",
+						"name": "",
+						"type": "bool"
+					}
+				],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			}
+		],
+		"devdoc": {
+			"author": "Gary Rong<garyrong@ethereum.org>, Martin Swende <martin.swende@ethereum.org>",
+			"details": "Implementation of the blockchain checkpoint registrar.",
+			"methods": {
+				"GetAllAdmin()": {
+					"details": "Get all admin addresses",
+					"returns": {
+						"_0": "address list"
+					}
+				},
+				"GetLatestCheckpoint()": {
+					"details": "Get latest stable checkpoint information.",
+					"returns": {
+						"_0": "section index",
+						"_1": "checkpoint hash",
+						"_2": "block height associated with checkpoint"
+					}
+				}
+			},
+			"title": "CheckpointOracle"
+		},
+		"userdoc": {
+			"methods": {}
+		}
+	},
+	"settings": {
+		"compilationTarget": {
+			"contracts/checkpointoracle/contract/oracle.sol": "CheckpointOracle"
+		},
+		"evmVersion": "istanbul",
+		"libraries": {},
+		"metadata": {
+			"bytecodeHash": "ipfs"
+		},
+		"optimizer": {
+			"enabled": false,
+			"runs": 200
+		},
+		"remappings": []
+	},
+	"sources": {
+		"contracts/checkpointoracle/contract/oracle.sol": {
+			"keccak256": "0x738c2be3bcb2f7f06946ef3c467852e34a4e65120d2782d89d3fc9d88e6cb2eb",
+			"urls": [
+				"bzz-raw://f2798b17afac3e0d77555bf8ecae9c1c462d2e5317799dc0a83c7ef23de6a930",
+				"dweb:/ipfs/QmYqFrDitrtbGuxu2a8BtPrCYp7gKQvbL9qwk9DUczh6Ct"
+			]
+		}
+	},
+	"version": 1
+}
