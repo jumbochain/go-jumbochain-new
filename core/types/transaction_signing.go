@@ -40,14 +40,14 @@ type sigCache struct {
 func MakeSigner(config *params.ChainConfig, blockNumber *big.Int) Signer {
 	var signer Signer
 	switch {
-	case config.IsLondon(blockNumber):
-		signer = NewLondonSigner(config.ChainID)
-	case config.IsBerlin(blockNumber):
-		signer = NewEIP2930Signer(config.ChainID)
-	case config.IsEIP155(blockNumber):
-		signer = NewEIP155Signer(config.ChainID)
-	case config.IsHomestead(blockNumber):
-		signer = HomesteadSigner{}
+	// case config.IsLondon(blockNumber):
+	// 	signer = NewLondonSigner(config.ChainID)
+	// case config.IsBerlin(blockNumber):
+	// 	signer = NewEIP2930Signer(config.ChainID)
+	// case config.IsEIP155(blockNumber):
+	// 	signer = NewEIP155Signer(config.ChainID)
+	// case config.IsHomestead(blockNumber):
+	// 	signer = HomesteadSigner{}
 	default:
 		signer = FrontierSigner{}
 	}
@@ -62,17 +62,17 @@ func MakeSigner(config *params.ChainConfig, blockNumber *big.Int) Signer {
 // Use this in transaction-handling code where the current block number is unknown. If you
 // have the current block number available, use MakeSigner instead.
 func LatestSigner(config *params.ChainConfig) Signer {
-	if config.ChainID != nil {
-		if config.LondonBlock != nil {
-			return NewLondonSigner(config.ChainID)
-		}
-		if config.BerlinBlock != nil {
-			return NewEIP2930Signer(config.ChainID)
-		}
-		if config.EIP155Block != nil {
-			return NewEIP155Signer(config.ChainID)
-		}
-	}
+	// if config.ChainID != nil {
+	// 	// if config.LondonBlock != nil {
+	// 	// 	return NewLondonSigner(config.ChainID)
+	// 	// }
+	// 	// if config.BerlinBlock != nil {
+	// 	// 	return NewEIP2930Signer(config.ChainID)
+	// 	// }
+	// 	// if config.EIP155Block != nil {
+	// 	// 	return NewEIP155Signer(config.ChainID)
+	// 	// }
+	// }
 	return HomesteadSigner{}
 }
 

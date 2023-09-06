@@ -46,7 +46,6 @@ import (
 	"jumbochain.org/core/vm"
 	"jumbochain.org/crypto"
 	"jumbochain.org/eth"
-	ethcatalyst "jumbochain.org/eth/catalyst"
 	"jumbochain.org/eth/downloader"
 	"jumbochain.org/eth/ethconfig"
 	"jumbochain.org/eth/gasprice"
@@ -58,7 +57,6 @@ import (
 	"jumbochain.org/internal/ethapi"
 	"jumbochain.org/internal/flags"
 	"jumbochain.org/les"
-	lescatalyst "jumbochain.org/les/catalyst"
 	"jumbochain.org/log"
 	"jumbochain.org/metrics"
 	"jumbochain.org/metrics/exp"
@@ -683,7 +681,7 @@ var (
 	ListenPortFlag = cli.IntFlag{
 		Name:  "port",
 		Usage: "Network listening port",
-		Value: 30303,
+		Value: 30304,
 	}
 	BootnodesFlag = cli.StringFlag{
 		Name:  "bootnodes",
@@ -1725,13 +1723,13 @@ func SetEthConfig(ctx *cli.Context, stack *node.Node, cfg *ethconfig.Config) {
 			cfg.NetworkId = 3
 		}
 		cfg.Genesis = core.DefaultRopstenGenesisBlock()
-		SetDNSDiscoveryDefaults(cfg, params.RopstenGenesisHash)
+		// SetDNSDiscoveryDefaults(cfg, params.RopstenGenesisHash)
 	case ctx.GlobalBool(SepoliaFlag.Name):
 		if !ctx.GlobalIsSet(NetworkIdFlag.Name) {
 			cfg.NetworkId = 11155111
 		}
 		cfg.Genesis = core.DefaultSepoliaGenesisBlock()
-		SetDNSDiscoveryDefaults(cfg, params.SepoliaGenesisHash)
+		// SetDNSDiscoveryDefaults(cfg, params.SepoliaGenesisHash)
 	case ctx.GlobalBool(RinkebyFlag.Name):
 		log.Warn("")
 		log.Warn("--------------------------------------------------------------------------------")
@@ -1747,19 +1745,19 @@ func SetEthConfig(ctx *cli.Context, stack *node.Node, cfg *ethconfig.Config) {
 			cfg.NetworkId = 4
 		}
 		cfg.Genesis = core.DefaultRinkebyGenesisBlock()
-		SetDNSDiscoveryDefaults(cfg, params.RinkebyGenesisHash)
+		// SetDNSDiscoveryDefaults(cfg, params.RinkebyGenesisHash)
 	case ctx.GlobalBool(GoerliFlag.Name):
 		if !ctx.GlobalIsSet(NetworkIdFlag.Name) {
 			cfg.NetworkId = 5
 		}
 		cfg.Genesis = core.DefaultGoerliGenesisBlock()
-		SetDNSDiscoveryDefaults(cfg, params.GoerliGenesisHash)
+		// SetDNSDiscoveryDefaults(cfg, params.GoerliGenesisHash)
 	case ctx.GlobalBool(KilnFlag.Name):
 		if !ctx.GlobalIsSet(NetworkIdFlag.Name) {
 			cfg.NetworkId = 1337802
 		}
 		cfg.Genesis = core.DefaultKilnGenesisBlock()
-		SetDNSDiscoveryDefaults(cfg, params.KilnGenesisHash)
+		// SetDNSDiscoveryDefaults(cfg, params.KilnGenesisHash)
 	case ctx.GlobalBool(DeveloperFlag.Name):
 		if !ctx.GlobalIsSet(NetworkIdFlag.Name) {
 			cfg.NetworkId = 1337
@@ -1846,11 +1844,11 @@ func RegisterEthService(stack *node.Node, cfg *ethconfig.Config) (ethapi.Backend
 			Fatalf("Failed to register the Ethereum service: %v", err)
 		}
 		stack.RegisterAPIs(tracers.APIs(backend.ApiBackend))
-		if backend.BlockChain().Config().TerminalTotalDifficulty != nil {
-			if err := lescatalyst.Register(stack, backend); err != nil {
-				Fatalf("Failed to register the catalyst service: %v", err)
-			}
-		}
+		// if backend.BlockChain().Config().TerminalTotalDifficulty != nil {
+		// 	if err := lescatalyst.Register(stack, backend); err != nil {
+		// 		Fatalf("Failed to register the catalyst service: %v", err)
+		// 	}
+		// }
 		return backend.ApiBackend, nil
 	}
 	backend, err := eth.New(stack, cfg)
@@ -1863,11 +1861,11 @@ func RegisterEthService(stack *node.Node, cfg *ethconfig.Config) (ethapi.Backend
 			Fatalf("Failed to create the LES server: %v", err)
 		}
 	}
-	if backend.BlockChain().Config().TerminalTotalDifficulty != nil {
-		if err := ethcatalyst.Register(stack, backend); err != nil {
-			Fatalf("Failed to register the catalyst service: %v", err)
-		}
-	}
+	// if backend.BlockChain().Config().TerminalTotalDifficulty != nil {
+	// 	if err := ethcatalyst.Register(stack, backend); err != nil {
+	// 		Fatalf("Failed to register the catalyst service: %v", err)
+	// 	}
+	// }
 	stack.RegisterAPIs(tracers.APIs(backend.APIBackend))
 	return backend.APIBackend, backend
 }

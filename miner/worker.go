@@ -27,7 +27,6 @@ import (
 	mapset "github.com/deckarep/golang-set"
 	"jumbochain.org/common"
 	"jumbochain.org/consensus"
-	"jumbochain.org/consensus/misc"
 	"jumbochain.org/core"
 	"jumbochain.org/core/state"
 	"jumbochain.org/core/types"
@@ -892,12 +891,12 @@ func (w *worker) commitTransactions(env *environment, txs *types.TransactionsByP
 		from, _ := types.Sender(env.signer, tx)
 		// Check whether the tx is replay protected. If we're not in the EIP155 hf
 		// phase, start ignoring the sender until we do.
-		if tx.Protected() && !w.chainConfig.IsEIP155(env.header.Number) {
-			log.Trace("Ignoring reply protected transaction", "hash", tx.Hash(), "eip155", w.chainConfig.EIP155Block)
+		// if tx.Protected() && !w.chainConfig.IsEIP155(env.header.Number) {
+		// 	log.Trace("Ignoring reply protected transaction", "hash", tx.Hash(), "eip155", w.chainConfig.EIP155Block)
 
-			txs.Pop()
-			continue
-		}
+		// 	txs.Pop()
+		// 	continue
+		// }
 		// Start executing the transaction
 		env.state.Prepare(tx.Hash(), env.tcount)
 
@@ -1013,13 +1012,13 @@ func (w *worker) prepareWork(genParams *generateParams) (*environment, error) {
 		header.MixDigest = genParams.random
 	}
 	// Set baseFee and GasLimit if we are on an EIP-1559 chain
-	if w.chainConfig.IsLondon(header.Number) {
-		header.BaseFee = misc.CalcBaseFee(w.chainConfig, parent.Header())
-		if !w.chainConfig.IsLondon(parent.Number()) {
-			parentGasLimit := parent.GasLimit() * params.ElasticityMultiplier
-			header.GasLimit = core.CalcGasLimit(parentGasLimit, w.config.GasCeil)
-		}
-	}
+	// if w.chainConfig.IsLondon(header.Number) {
+	// 	header.BaseFee = misc.CalcBaseFee(w.chainConfig, parent.Header())
+	// 	if !w.chainConfig.IsLondon(parent.Number()) {
+	// 		parentGasLimit := parent.GasLimit() * params.ElasticityMultiplier
+	// 		header.GasLimit = core.CalcGasLimit(parentGasLimit, w.config.GasCeil)
+	// 	}
+	// }
 	// Run the consensus preparation with the default or customized consensus engine.
 	if err := w.engine.Prepare(w.chain, header); err != nil {
 		log.Error("Failed to prepare header for sealing", "err", err)
@@ -1210,8 +1209,9 @@ func (w *worker) getSealingBlock(parent common.Hash, timestamp uint64, coinbase 
 // isTTDReached returns the indicator if the given block has reached the total
 // terminal difficulty for The Merge transition.
 func (w *worker) isTTDReached(header *types.Header) bool {
-	td, ttd := w.chain.GetTd(header.ParentHash, header.Number.Uint64()-1), w.chain.Config().TerminalTotalDifficulty
-	return td != nil && ttd != nil && td.Cmp(ttd) >= 0
+	// td, ttd := w.chain.GetTd(header.ParentHash, header.Number.Uint64()-1), w.chain.Config().TerminalTotalDifficulty
+	// return td != nil && ttd != nil && td.Cmp(ttd) >= 0
+	return true
 }
 
 // copyReceipts makes a deep copy of the given receipts.

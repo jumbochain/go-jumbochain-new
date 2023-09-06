@@ -289,18 +289,18 @@ func (ethash *Ethash) verifyHeader(chain consensus.ChainHeaderReader, header, pa
 		return fmt.Errorf("invalid gasUsed: have %d, gasLimit %d", header.GasUsed, header.GasLimit)
 	}
 	// Verify the block's gas usage and (if applicable) verify the base fee.
-	if !chain.Config().IsLondon(header.Number) {
-		// Verify BaseFee not present before EIP-1559 fork.
-		if header.BaseFee != nil {
-			return fmt.Errorf("invalid baseFee before fork: have %d, expected 'nil'", header.BaseFee)
-		}
-		if err := misc.VerifyGaslimit(parent.GasLimit, header.GasLimit); err != nil {
-			return err
-		}
-	} else if err := misc.VerifyEip1559Header(chain.Config(), parent, header); err != nil {
-		// Verify the header's EIP-1559 attributes.
-		return err
-	}
+	// if !chain.Config().IsLondon(header.Number) {
+	// 	// Verify BaseFee not present before EIP-1559 fork.
+	// 	if header.BaseFee != nil {
+	// 		return fmt.Errorf("invalid baseFee before fork: have %d, expected 'nil'", header.BaseFee)
+	// 	}
+	// 	if err := misc.VerifyGaslimit(parent.GasLimit, header.GasLimit); err != nil {
+	// 		return err
+	// 	}
+	// } else if err := misc.VerifyEip1559Header(chain.Config(), parent, header); err != nil {
+	// 	// Verify the header's EIP-1559 attributes.
+	// 	return err
+	// }
 	// Verify that the block number is parent's +1
 	if diff := new(big.Int).Sub(header.Number, parent.Number); diff.Cmp(big.NewInt(1)) != 0 {
 		return consensus.ErrInvalidNumber
@@ -332,20 +332,20 @@ func (ethash *Ethash) CalcDifficulty(chain consensus.ChainHeaderReader, time uin
 // the difficulty that a new block should have when created at time
 // given the parent block's time and difficulty.
 func CalcDifficulty(config *params.ChainConfig, time uint64, parent *types.Header) *big.Int {
-	next := new(big.Int).Add(parent.Number, big1)
+	// next := new(big.Int).Add(parent.Number, big1)
 	switch {
-	case config.IsArrowGlacier(next):
-		return calcDifficultyEip4345(time, parent)
-	case config.IsLondon(next):
-		return calcDifficultyEip3554(time, parent)
-	case config.IsMuirGlacier(next):
-		return calcDifficultyEip2384(time, parent)
-	case config.IsConstantinople(next):
-		return calcDifficultyConstantinople(time, parent)
-	case config.IsByzantium(next):
-		return calcDifficultyByzantium(time, parent)
-	case config.IsHomestead(next):
-		return calcDifficultyHomestead(time, parent)
+	// case config.IsArrowGlacier(next):
+	// 	return calcDifficultyEip4345(time, parent)
+	// case config.IsLondon(next):
+	// 	return calcDifficultyEip3554(time, parent)
+	// case config.IsMuirGlacier(next):
+	// 	return calcDifficultyEip2384(time, parent)
+	// case config.IsConstantinople(next):
+	// 	return calcDifficultyConstantinople(time, parent)
+	// case config.IsByzantium(next):
+	// 	return calcDifficultyByzantium(time, parent)
+	// case config.IsHomestead(next):
+	// 	return calcDifficultyHomestead(time, parent)
 	default:
 		return calcDifficultyFrontier(time, parent)
 	}
@@ -593,7 +593,7 @@ func (ethash *Ethash) Prepare(chain consensus.ChainHeaderReader, header *types.H
 func (ethash *Ethash) Finalize(chain consensus.ChainHeaderReader, header *types.Header, state *state.StateDB, txs []*types.Transaction, uncles []*types.Header) {
 	// Accumulate any block and uncle rewards and commit the final state root
 	accumulateRewards(chain.Config(), state, header, uncles)
-	header.Root = state.IntermediateRoot(chain.Config().IsEIP158(header.Number))
+	// header.Root = state.IntermediateRoot(chain.Config().IsEIP158(header.Number))
 }
 
 // FinalizeAndAssemble implements consensus.Engine, accumulating the block and
@@ -645,12 +645,12 @@ var (
 func accumulateRewards(config *params.ChainConfig, state *state.StateDB, header *types.Header, uncles []*types.Header) {
 	// Select the correct block reward based on chain progression
 	blockReward := FrontierBlockReward
-	if config.IsByzantium(header.Number) {
-		blockReward = ByzantiumBlockReward
-	}
-	if config.IsConstantinople(header.Number) {
-		blockReward = ConstantinopleBlockReward
-	}
+	// if config.IsByzantium(header.Number) {
+	// 	blockReward = ByzantiumBlockReward
+	// }
+	// if config.IsConstantinople(header.Number) {
+	// 	blockReward = ConstantinopleBlockReward
+	// }
 	// Accumulate the rewards for the miner and any included uncles
 	reward := new(big.Int).Set(blockReward)
 	r := new(big.Int)

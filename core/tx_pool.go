@@ -27,7 +27,6 @@ import (
 
 	"jumbochain.org/common"
 	"jumbochain.org/common/prque"
-	"jumbochain.org/consensus/misc"
 	"jumbochain.org/core/state"
 	"jumbochain.org/core/types"
 	"jumbochain.org/event"
@@ -1178,10 +1177,10 @@ func (pool *TxPool) runReorg(done chan struct{}, reset *txpoolResetRequest, dirt
 	// because of another transaction (e.g. higher gas price).
 	if reset != nil {
 		pool.demoteUnexecutables()
-		if reset.newHead != nil && pool.chainconfig.IsLondon(new(big.Int).Add(reset.newHead.Number, big.NewInt(1))) {
-			pendingBaseFee := misc.CalcBaseFee(pool.chainconfig, reset.newHead)
-			pool.priced.SetBaseFee(pendingBaseFee)
-		}
+		// if reset.newHead != nil && pool.chainconfig.IsLondon(new(big.Int).Add(reset.newHead.Number, big.NewInt(1))) {
+		// 	pendingBaseFee := misc.CalcBaseFee(pool.chainconfig, reset.newHead)
+		// 	pool.priced.SetBaseFee(pendingBaseFee)
+		// }
 		// Update all accounts to the latest known pending nonce
 		nonces := make(map[common.Address]uint64, len(pool.pending))
 		for addr, list := range pool.pending {
@@ -1300,10 +1299,10 @@ func (pool *TxPool) reset(oldHead, newHead *types.Header) {
 	pool.addTxsLocked(reinject, false)
 
 	// Update all fork indicator by next pending block number.
-	next := new(big.Int).Add(newHead.Number, big.NewInt(1))
-	pool.istanbul = pool.chainconfig.IsIstanbul(next)
-	pool.eip2718 = pool.chainconfig.IsBerlin(next)
-	pool.eip1559 = pool.chainconfig.IsLondon(next)
+	// next := new(big.Int).Add(newHead.Number, big.NewInt(1))
+	// pool.istanbul = pool.chainconfig.IsIstanbul(next)
+	// pool.eip2718 = pool.chainconfig.IsBerlin(next)
+	// pool.eip1559 = pool.chainconfig.IsLondon(next)
 }
 
 // promoteExecutables moves transactions that have become processable from the

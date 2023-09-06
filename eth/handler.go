@@ -264,11 +264,11 @@ func newHandler(config *handlerConfig) (*handler, error) {
 				if ptd == nil {
 					return 0, nil
 				}
-				td := new(big.Int).Add(ptd, block.Difficulty())
-				if !h.chain.Config().IsTerminalPoWBlock(ptd, td) {
-					log.Info("Filtered out non-termimal pow block", "number", block.NumberU64(), "hash", block.Hash())
-					return 0, nil
-				}
+				// td := new(big.Int).Add(ptd, block.Difficulty())
+				// if !h.chain.Config().IsTerminalPoWBlock(ptd, td) {
+				// 	log.Info("Filtered out non-termimal pow block", "number", block.NumberU64(), "hash", block.Hash())
+				// 	return 0, nil
+				// }
 				if err := h.chain.InsertBlockWithoutSetHead(block); err != nil {
 					return i, err
 				}

@@ -51,9 +51,9 @@ type ConsensusAPI struct {
 // NewConsensusAPI creates a new consensus api for the given backend.
 // The underlying blockchain needs to have a valid terminal total difficulty set.
 func NewConsensusAPI(les *les.LightEthereum) *ConsensusAPI {
-	if les.BlockChain().Config().TerminalTotalDifficulty == nil {
-		panic("Catalyst started without valid total difficulty")
-	}
+	// if les.BlockChain().Config().TerminalTotalDifficulty == nil {
+	// 	panic("Catalyst started without valid total difficulty")
+	// }
 	return &ConsensusAPI{les: les}
 }
 
@@ -128,11 +128,11 @@ func (api *ConsensusAPI) ExecutePayloadV1(params beacon.ExecutableDataV1) (beaco
 	if parent == nil {
 		return api.invalid(), fmt.Errorf("could not find parent %x", params.ParentHash)
 	}
-	td := api.les.BlockChain().GetTd(parent.Hash(), block.NumberU64()-1)
-	ttd := api.les.BlockChain().Config().TerminalTotalDifficulty
-	if td.Cmp(ttd) < 0 {
-		return api.invalid(), fmt.Errorf("can not execute payload on top of block with low td got: %v threshold %v", td, ttd)
-	}
+	// td := api.les.BlockChain().GetTd(parent.Hash(), block.NumberU64()-1)
+	// ttd := api.les.BlockChain().Config().TerminalTotalDifficulty
+	// if td.Cmp(ttd) < 0 {
+	// 	return api.invalid(), fmt.Errorf("can not execute payload on top of block with low td got: %v threshold %v", td, ttd)
+	// }
 	if err = api.les.BlockChain().InsertHeader(block.Header()); err != nil {
 		return api.invalid(), err
 	}
@@ -166,10 +166,10 @@ func (api *ConsensusAPI) checkTerminalTotalDifficulty(head common.Hash) error {
 	if header == nil {
 		return errors.New("unknown header")
 	}
-	td := api.les.BlockChain().GetTd(header.Hash(), header.Number.Uint64())
-	if td != nil && td.Cmp(api.les.BlockChain().Config().TerminalTotalDifficulty) < 0 {
-		return errors.New("invalid ttd")
-	}
+	// td := api.les.BlockChain().GetTd(header.Hash(), header.Number.Uint64())
+	// if td != nil && td.Cmp(api.les.BlockChain().Config().TerminalTotalDifficulty) < 0 {
+	// 	return errors.New("invalid ttd")
+	// }
 	return nil
 }
 

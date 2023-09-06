@@ -1423,7 +1423,7 @@ func TestEIP155Transition(t *testing.T) {
 		funds      = big.NewInt(1000000000)
 		deleteAddr = common.Address{1}
 		gspec      = &Genesis{
-			Config: &params.ChainConfig{ChainID: big.NewInt(1), EIP150Block: big.NewInt(0), EIP155Block: big.NewInt(2), HomesteadBlock: new(big.Int)},
+			Config: &params.ChainConfig{ChainID: big.NewInt(1)},
 			Alloc:  GenesisAlloc{address: {Balance: funds}, deleteAddr: {Balance: new(big.Int)}},
 		}
 		genesis = gspec.MustCommit(db)
@@ -1494,7 +1494,7 @@ func TestEIP155Transition(t *testing.T) {
 	}
 
 	// generate an invalid chain id transaction
-	config := &params.ChainConfig{ChainID: big.NewInt(2), EIP150Block: big.NewInt(0), EIP155Block: big.NewInt(2), HomesteadBlock: new(big.Int)}
+	config := &params.ChainConfig{ChainID: big.NewInt(2)}
 	blocks, _ = GenerateChain(config, blocks[len(blocks)-1], ethash.NewFaker(), db, 4, func(i int, block *BlockGen) {
 		var (
 			tx      *types.Transaction
@@ -1527,11 +1527,11 @@ func TestEIP161AccountRemoval(t *testing.T) {
 		theAddr = common.Address{1}
 		gspec   = &Genesis{
 			Config: &params.ChainConfig{
-				ChainID:        big.NewInt(1),
-				HomesteadBlock: new(big.Int),
-				EIP155Block:    new(big.Int),
-				EIP150Block:    new(big.Int),
-				EIP158Block:    big.NewInt(2),
+				ChainID: big.NewInt(1),
+				// HomesteadBlock: new(big.Int),
+				// EIP155Block:    new(big.Int),
+				// EIP150Block:    new(big.Int),
+				// EIP158Block:    big.NewInt(2),
 			},
 			Alloc: GenesisAlloc{address: {Balance: funds}},
 		}
@@ -1959,7 +1959,7 @@ func testSideImport(t *testing.T, numCanonBlocksInSidechain, blocksBetweenCommon
 		merger.FinalizePoS()
 
 		// Set the terminal total difficulty in the config
-		gspec.Config.TerminalTotalDifficulty = big.NewInt(0)
+		// gspec.Config.TerminalTotalDifficulty = big.NewInt(0)
 	}
 	blocks, _ := GenerateChain(&chainConfig, genesis, genEngine, db, 2*TriesInMemory, func(i int, gen *BlockGen) {
 		tx, err := types.SignTx(types.NewTransaction(nonce, common.HexToAddress("deadbeef"), big.NewInt(100), 21000, big.NewInt(int64(i+1)*params.GWei), nil), signer, key)
@@ -1991,7 +1991,7 @@ func testSideImport(t *testing.T, numCanonBlocksInSidechain, blocksBetweenCommon
 		merger.ReachTTD()
 		merger.FinalizePoS()
 		// Set the terminal total difficulty in the config
-		gspec.Config.TerminalTotalDifficulty = big.NewInt(int64(len(blocks)))
+		// gspec.Config.TerminalTotalDifficulty = big.NewInt(int64(len(blocks)))
 	}
 
 	// Generate the sidechain
@@ -2215,7 +2215,7 @@ func testInsertKnownChainDataWithMerging(t *testing.T, typ string, mergeHeight i
 		if engine != nil {
 			runMerger.FinalizePoS()
 			// Set the terminal total difficulty in the config
-			chainConfig.TerminalTotalDifficulty = big.NewInt(int64(height))
+			// chainConfig.TerminalTotalDifficulty = big.NewInt(int64(height))
 		}
 	}
 
@@ -3567,8 +3567,8 @@ func TestEIP1559Transition(t *testing.T) {
 		}
 	)
 
-	gspec.Config.BerlinBlock = common.Big0
-	gspec.Config.LondonBlock = common.Big0
+	// gspec.Config.BerlinBlock = common.Big0
+	// gspec.Config.LondonBlock = common.Big0
 	genesis := gspec.MustCommit(db)
 	signer := types.LatestSigner(gspec.Config)
 

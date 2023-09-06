@@ -136,14 +136,14 @@ func CommitGenesisState(db ethdb.Database, hash common.Hash) error {
 		switch hash {
 		case params.MainnetGenesisHash:
 			genesis = DefaultGenesisBlock()
-		case params.RopstenGenesisHash:
-			genesis = DefaultRopstenGenesisBlock()
-		case params.RinkebyGenesisHash:
-			genesis = DefaultRinkebyGenesisBlock()
-		case params.GoerliGenesisHash:
-			genesis = DefaultGoerliGenesisBlock()
-		case params.SepoliaGenesisHash:
-			genesis = DefaultSepoliaGenesisBlock()
+		// case params.RopstenGenesisHash:
+		// 	genesis = DefaultRopstenGenesisBlock()
+		// case params.RinkebyGenesisHash:
+		// 	genesis = DefaultRinkebyGenesisBlock()
+		// case params.GoerliGenesisHash:
+		// 	genesis = DefaultGoerliGenesisBlock()
+		// case params.SepoliaGenesisHash:
+		// 	genesis = DefaultSepoliaGenesisBlock()
 		}
 		if genesis != nil {
 			alloc = genesis.Alloc
@@ -279,12 +279,12 @@ func SetupGenesisBlockWithOverride(db ethdb.Database, genesis *Genesis, override
 	}
 	// Get the existing chain configuration.
 	newcfg := genesis.configOrDefault(stored)
-	if overrideArrowGlacier != nil {
-		newcfg.ArrowGlacierBlock = overrideArrowGlacier
-	}
-	if overrideTerminalTotalDifficulty != nil {
-		newcfg.TerminalTotalDifficulty = overrideTerminalTotalDifficulty
-	}
+	// if overrideArrowGlacier != nil {
+	// 	newcfg.ArrowGlacierBlock = overrideArrowGlacier
+	// }
+	// if overrideTerminalTotalDifficulty != nil {
+	// 	newcfg.TerminalTotalDifficulty = overrideTerminalTotalDifficulty
+	// }
 	if err := newcfg.CheckConfigForkOrder(); err != nil {
 		return newcfg, common.Hash{}, err
 	}
@@ -301,12 +301,12 @@ func SetupGenesisBlockWithOverride(db ethdb.Database, genesis *Genesis, override
 	// apply the overrides.
 	if genesis == nil && stored != params.MainnetGenesisHash {
 		newcfg = storedcfg
-		if overrideArrowGlacier != nil {
-			newcfg.ArrowGlacierBlock = overrideArrowGlacier
-		}
-		if overrideTerminalTotalDifficulty != nil {
-			newcfg.TerminalTotalDifficulty = overrideTerminalTotalDifficulty
-		}
+		// if overrideArrowGlacier != nil {
+		// 	newcfg.ArrowGlacierBlock = overrideArrowGlacier
+		// }
+		// if overrideTerminalTotalDifficulty != nil {
+		// 	newcfg.TerminalTotalDifficulty = overrideTerminalTotalDifficulty
+		// }
 	}
 	// Check config compatibility and write the config. Compatibility errors
 	// are returned to the caller unless we're already at block zero.
@@ -328,16 +328,16 @@ func (g *Genesis) configOrDefault(ghash common.Hash) *params.ChainConfig {
 		return g.Config
 	case ghash == params.MainnetGenesisHash:
 		return params.MainnetChainConfig
-	case ghash == params.RopstenGenesisHash:
-		return params.RopstenChainConfig
-	case ghash == params.SepoliaGenesisHash:
-		return params.SepoliaChainConfig
-	case ghash == params.RinkebyGenesisHash:
-		return params.RinkebyChainConfig
-	case ghash == params.GoerliGenesisHash:
-		return params.GoerliChainConfig
-	case ghash == params.KilnGenesisHash:
-		return DefaultKilnGenesisBlock().Config
+	// case ghash == params.RopstenGenesisHash:
+	// 	return params.RopstenChainConfig
+	// case ghash == params.SepoliaGenesisHash:
+	// 	return params.SepoliaChainConfig
+	// case ghash == params.RinkebyGenesisHash:
+	// 	return params.RinkebyChainConfig
+	// case ghash == params.GoerliGenesisHash:
+	// 	return params.GoerliChainConfig
+	// case ghash == params.KilnGenesisHash:
+	// 	return DefaultKilnGenesisBlock().Config
 	default:
 		return params.AllEthashProtocolChanges
 	}
@@ -373,13 +373,13 @@ func (g *Genesis) ToBlock(db ethdb.Database) *types.Block {
 	if g.Difficulty == nil && g.Mixhash == (common.Hash{}) {
 		head.Difficulty = params.GenesisDifficulty
 	}
-	if g.Config != nil && g.Config.IsLondon(common.Big0) {
-		if g.BaseFee != nil {
-			head.BaseFee = g.BaseFee
-		} else {
-			head.BaseFee = new(big.Int).SetUint64(params.InitialBaseFee)
-		}
-	}
+	// if g.Config != nil && g.Config.IsLondon(common.Big0) {
+	// 	if g.BaseFee != nil {
+	// 		head.BaseFee = g.BaseFee
+	// 	} else {
+	// 		head.BaseFee = new(big.Int).SetUint64(params.InitialBaseFee)
+	// 	}
+	// }
 	return types.NewBlock(head, nil, nil, nil, trie.NewStackTrie(nil))
 }
 

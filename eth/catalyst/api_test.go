@@ -76,7 +76,7 @@ func generatePreMergeChain(n int) (*core.Genesis, []*types.Block) {
 	for _, b := range blocks {
 		totalDifficulty.Add(totalDifficulty, b.Difficulty())
 	}
-	config.TerminalTotalDifficulty = totalDifficulty
+	// config.TerminalTotalDifficulty = totalDifficulty
 	return genesis, blocks
 }
 
@@ -146,7 +146,7 @@ func TestSetHeadBeforeTotalDifficulty(t *testing.T) {
 func TestEth2PrepareAndGetPayload(t *testing.T) {
 	genesis, blocks := generatePreMergeChain(10)
 	// We need to properly set the terminal total difficulty
-	genesis.Config.TerminalTotalDifficulty.Sub(genesis.Config.TerminalTotalDifficulty, blocks[9].Difficulty())
+	// genesis.Config.TerminalTotalDifficulty.Sub(genesis.Config.TerminalTotalDifficulty, blocks[9].Difficulty())
 	n, ethservice := startEthService(t, genesis, blocks[:9])
 	defer n.Close()
 
@@ -492,7 +492,7 @@ func TestExchangeTransitionConfig(t *testing.T) {
 	}
 	// invalid terminal block hash
 	config = beacon.TransitionConfigurationV1{
-		TerminalTotalDifficulty: (*hexutil.Big)(genesis.Config.TerminalTotalDifficulty),
+		// TerminalTotalDifficulty: (*hexutil.Big)(genesis.Config.TerminalTotalDifficulty),
 		TerminalBlockHash:       common.Hash{1},
 		TerminalBlockNumber:     0,
 	}
@@ -501,7 +501,7 @@ func TestExchangeTransitionConfig(t *testing.T) {
 	}
 	// valid config
 	config = beacon.TransitionConfigurationV1{
-		TerminalTotalDifficulty: (*hexutil.Big)(genesis.Config.TerminalTotalDifficulty),
+		// TerminalTotalDifficulty: (*hexutil.Big)(genesis.Config.TerminalTotalDifficulty),
 		TerminalBlockHash:       common.Hash{},
 		TerminalBlockNumber:     0,
 	}
@@ -510,7 +510,7 @@ func TestExchangeTransitionConfig(t *testing.T) {
 	}
 	// valid config
 	config = beacon.TransitionConfigurationV1{
-		TerminalTotalDifficulty: (*hexutil.Big)(genesis.Config.TerminalTotalDifficulty),
+		// TerminalTotalDifficulty: (*hexutil.Big)(genesis.Config.TerminalTotalDifficulty),
 		TerminalBlockHash:       preMergeBlocks[5].Hash(),
 		TerminalBlockNumber:     6,
 	}
@@ -790,10 +790,10 @@ func TestTrickRemoteBlockCache(t *testing.T) {
 
 func TestNewPayloadOnInvalidTerminalBlock(t *testing.T) {
 	genesis, preMergeBlocks := generatePreMergeChain(100)
-	fmt.Println(genesis.Config.TerminalTotalDifficulty)
-	genesis.Config.TerminalTotalDifficulty = preMergeBlocks[0].Difficulty() //.Sub(genesis.Config.TerminalTotalDifficulty, preMergeBlocks[len(preMergeBlocks)-1].Difficulty())
+	// fmt.Println(genesis.Config.TerminalTotalDifficulty)
+	// genesis.Config.TerminalTotalDifficulty = preMergeBlocks[0].Difficulty() //.Sub(genesis.Config.TerminalTotalDifficulty, preMergeBlocks[len(preMergeBlocks)-1].Difficulty())
 
-	fmt.Println(genesis.Config.TerminalTotalDifficulty)
+	// fmt.Println(genesis.Config.TerminalTotalDifficulty)
 	n, ethservice := startEthService(t, genesis, preMergeBlocks)
 	defer n.Close()
 

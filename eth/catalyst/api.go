@@ -26,7 +26,6 @@ import (
 	"time"
 
 	"jumbochain.org/common"
-	"jumbochain.org/common/hexutil"
 	"jumbochain.org/core/beacon"
 	"jumbochain.org/core/rawdb"
 	"jumbochain.org/core/types"
@@ -69,9 +68,9 @@ type ConsensusAPI struct {
 // NewConsensusAPI creates a new consensus api for the given backend.
 // The underlying blockchain needs to have a valid terminal total difficulty set.
 func NewConsensusAPI(eth *eth.Ethereum) *ConsensusAPI {
-	if eth.BlockChain().Config().TerminalTotalDifficulty == nil {
-		panic("Catalyst started without valid total difficulty")
-	}
+	// if eth.BlockChain().Config().TerminalTotalDifficulty == nil {
+	// 	panic("Catalyst started without valid total difficulty")
+	// }
 	return &ConsensusAPI{
 		eth:          eth,
 		remoteBlocks: newHeaderQueue(),
@@ -139,20 +138,20 @@ func (api *ConsensusAPI) ForkchoiceUpdatedV1(update beacon.ForkchoiceStateV1, pa
 		var (
 			td  = api.eth.BlockChain().GetTd(update.HeadBlockHash, block.NumberU64())
 			ptd = api.eth.BlockChain().GetTd(block.ParentHash(), block.NumberU64()-1)
-			ttd = api.eth.BlockChain().Config().TerminalTotalDifficulty
+			// ttd = api.eth.BlockChain().Config().TerminalTotalDifficulty
 		)
 		if td == nil || (block.NumberU64() > 0 && ptd == nil) {
 			log.Error("TDs unavailable for TTD check", "number", block.NumberU64(), "hash", update.HeadBlockHash, "td", td, "parent", block.ParentHash(), "ptd", ptd)
 			return beacon.STATUS_INVALID, errors.New("TDs unavailable for TDD check")
 		}
-		if td.Cmp(ttd) < 0 {
-			log.Error("Refusing beacon update to pre-merge", "number", block.NumberU64(), "hash", update.HeadBlockHash, "diff", block.Difficulty(), "age", common.PrettyAge(time.Unix(int64(block.Time()), 0)))
-			return beacon.ForkChoiceResponse{PayloadStatus: beacon.INVALID_TERMINAL_BLOCK, PayloadID: nil}, nil
-		}
-		if block.NumberU64() > 0 && ptd.Cmp(ttd) >= 0 {
-			log.Error("Parent block is already post-ttd", "number", block.NumberU64(), "hash", update.HeadBlockHash, "diff", block.Difficulty(), "age", common.PrettyAge(time.Unix(int64(block.Time()), 0)))
-			return beacon.ForkChoiceResponse{PayloadStatus: beacon.INVALID_TERMINAL_BLOCK, PayloadID: nil}, nil
-		}
+		// if td.Cmp(ttd) < 0 {
+		// 	log.Error("Refusing beacon update to pre-merge", "number", block.NumberU64(), "hash", update.HeadBlockHash, "diff", block.Difficulty(), "age", common.PrettyAge(time.Unix(int64(block.Time()), 0)))
+		// 	return beacon.ForkChoiceResponse{PayloadStatus: beacon.INVALID_TERMINAL_BLOCK, PayloadID: nil}, nil
+		// }
+		// if block.NumberU64() > 0 && ptd.Cmp(ttd) >= 0 {
+		// 	log.Error("Parent block is already post-ttd", "number", block.NumberU64(), "hash", update.HeadBlockHash, "diff", block.Difficulty(), "age", common.PrettyAge(time.Unix(int64(block.Time()), 0)))
+		// 	return beacon.ForkChoiceResponse{PayloadStatus: beacon.INVALID_TERMINAL_BLOCK, PayloadID: nil}, nil
+		// }
 	}
 
 	if rawdb.ReadCanonicalHash(api.eth.ChainDb(), block.NumberU64()) != update.HeadBlockHash {
@@ -233,23 +232,24 @@ func (api *ConsensusAPI) ExchangeTransitionConfigurationV1(config beacon.Transit
 	if config.TerminalTotalDifficulty == nil {
 		return nil, errors.New("invalid terminal total difficulty")
 	}
-	ttd := api.eth.BlockChain().Config().TerminalTotalDifficulty
-	if ttd.Cmp(config.TerminalTotalDifficulty.ToInt()) != 0 {
-		log.Warn("Invalid TTD configured", "geth", ttd, "beacon", config.TerminalTotalDifficulty)
-		return nil, fmt.Errorf("invalid ttd: execution %v consensus %v", ttd, config.TerminalTotalDifficulty)
-	}
+	// ttd := api.eth.BlockChain().Config().TerminalTotalDifficulty
+	// if ttd.Cmp(config.TerminalTotalDifficulty.ToInt()) != 0 {
+	// 	log.Warn("Invalid TTD configured", "geth", ttd, "beacon", config.TerminalTotalDifficulty)
+	// 	return nil, fmt.Errorf("invalid ttd: execution %v consensus %v", ttd, config.TerminalTotalDifficulty)
+	// }
 
 	if config.TerminalBlockHash != (common.Hash{}) {
 		if hash := api.eth.BlockChain().GetCanonicalHash(uint64(config.TerminalBlockNumber)); hash == config.TerminalBlockHash {
 			return &beacon.TransitionConfigurationV1{
-				TerminalTotalDifficulty: (*hexutil.Big)(ttd),
-				TerminalBlockHash:       config.TerminalBlockHash,
-				TerminalBlockNumber:     config.TerminalBlockNumber,
+				// TerminalTotalDifficulty: (*hexutil.Big)(ttd),
+				TerminalBlockHash:   config.TerminalBlockHash,
+				TerminalBlockNumber: config.TerminalBlockNumber,
 			}, nil
 		}
 		return nil, fmt.Errorf("invalid terminal block hash")
 	}
-	return &beacon.TransitionConfigurationV1{TerminalTotalDifficulty: (*hexutil.Big)(ttd)}, nil
+	return nil, nil
+	// return &beacon.TransitionConfigurationV1{TerminalTotalDifficulty: (*hexutil.Big)(ttd)}, nil
 }
 
 // GetPayloadV1 returns a cached payload by id.
@@ -305,19 +305,19 @@ func (api *ConsensusAPI) NewPayloadV1(params beacon.ExecutableDataV1) (beacon.Pa
 	}
 	// We have an existing parent, do some sanity checks to avoid the beacon client
 	// triggering too early
-	var (
-		ptd  = api.eth.BlockChain().GetTd(parent.Hash(), parent.NumberU64())
-		ttd  = api.eth.BlockChain().Config().TerminalTotalDifficulty
-		gptd = api.eth.BlockChain().GetTd(parent.ParentHash(), parent.NumberU64()-1)
-	)
-	if ptd.Cmp(ttd) < 0 {
-		log.Warn("Ignoring pre-merge payload", "number", params.Number, "hash", params.BlockHash, "td", ptd, "ttd", ttd)
-		return beacon.INVALID_TERMINAL_BLOCK, nil
-	}
-	if parent.Difficulty().BitLen() > 0 && gptd != nil && gptd.Cmp(ttd) >= 0 {
-		log.Error("Ignoring pre-merge parent block", "number", params.Number, "hash", params.BlockHash, "td", ptd, "ttd", ttd)
-		return beacon.INVALID_TERMINAL_BLOCK, nil
-	}
+	// var (
+	// ptd  = api.eth.BlockChain().GetTd(parent.Hash(), parent.NumberU64())
+	// ttd  = api.eth.BlockChain().Config().TerminalTotalDifficulty
+	// gptd = api.eth.BlockChain().GetTd(parent.ParentHash(), parent.NumberU64()-1)
+	// )
+	// if ptd.Cmp(ttd) < 0 {
+	// 	log.Warn("Ignoring pre-merge payload", "number", params.Number, "hash", params.BlockHash, "td", ptd, "ttd", ttd)
+	// 	return beacon.INVALID_TERMINAL_BLOCK, nil
+	// }
+	// if parent.Difficulty().BitLen() > 0 && gptd != nil && gptd.Cmp(ttd) >= 0 {
+	// 	log.Error("Ignoring pre-merge parent block", "number", params.Number, "hash", params.BlockHash, "td", ptd, "ttd", ttd)
+	// 	return beacon.INVALID_TERMINAL_BLOCK, nil
+	// }
 	if block.Time() <= parent.Time() {
 		log.Warn("Invalid timestamp", "parent", block.Time(), "block", block.Time())
 		return api.invalid(errors.New("invalid timestamp"), parent), nil
