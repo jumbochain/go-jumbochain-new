@@ -1,0 +1,8 @@
+
+data
+./cmd/geth/data
+./cmd/geth/data/*
+
+node
+./cmd/geth/node
+./cmd/geth/node/*
