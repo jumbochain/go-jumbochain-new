@@ -6,3 +6,11 @@ data
 node
 ./cmd/geth/node
 ./cmd/geth/node/*
+
+./cmd/bootnode/bootnode.toml
+./cmd/bootnode/bootnode.key
+./cmd/geth/data1/
+./cmd/geth/password.txt
+./cmd/geth/password1.txt
+./cmd/geth/config1.toml
+
