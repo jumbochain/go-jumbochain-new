@@ -31,7 +31,6 @@ import (
 	"jumbochain.org/consensus"
 	"jumbochain.org/consensus/misc"
 	"jumbochain.org/core"
-	"jumbochain.org/core/forkid"
 	"jumbochain.org/core/state"
 	"jumbochain.org/core/systemcontracts"
 	"jumbochain.org/core/types"
@@ -343,7 +342,7 @@ func (p *Jumbo) VerifyHeaders(chain consensus.ChainHeaderReader, headers []*type
 // On luban fork, we introduce vote attestation into the header's extra field, so extra format is different from before.
 // Before luban fork: |---Extra Vanity---|---Validators Bytes (or Empty)---|---Extra Seal---|
 // After luban fork:  |---Extra Vanity---|---Validators Number and Validators Bytes (or Empty)---|---Vote Attestation (or Empty)---|---Extra Seal---|
-func getValidatorBytesFromHeader(header *types.Header, chainConfig *params.ChainConfig, parliaConfig *params.ParliaConfig) []byte {
+func getValidatorBytesFromHeader(header *types.Header, chainConfig *params.ChainConfig, parliaConfig *params.JumboConsensusConfig) []byte {
 	if len(header.Extra) <= extraVanity+extraSeal {
 		return nil
 	}
@@ -368,7 +367,7 @@ func getValidatorBytesFromHeader(header *types.Header, chainConfig *params.Chain
 }
 
 // getVoteAttestationFromHeader returns the vote attestation extracted from the header's extra field if exists.
-func getVoteAttestationFromHeader(header *types.Header, chainConfig *params.ChainConfig, parliaConfig *params.ParliaConfig) (*types.VoteAttestation, error) {
+func getVoteAttestationFromHeader(header *types.Header, chainConfig *params.ChainConfig, parliaConfig *params.JumboConsensusConfig) (*types.VoteAttestation, error) {
 	if len(header.Extra) <= extraVanity+extraSeal {
 		return nil, nil
 	}
@@ -591,15 +590,15 @@ func (p *Jumbo) verifyCascadingFields(chain consensus.ChainHeaderReader, header 
 		return err
 	}
 
-	snap, err := p.snapshot(chain, number-1, header.ParentHash, parents)
-	if err != nil {
-		return err
-	}
+	// snap, err := p.snapshot(chain, number-1, header.ParentHash, parents)
+	// if err != nil {
+	// 	return err
+	// }
 
-	err = p.blockTimeVerifyForRamanujanFork(snap, header, parent)
-	if err != nil {
-		return err
-	}
+	// err = p.blockTimeVerifyForRamanujanFork(snap, header, parent)
+	// if err != nil {
+	// 	return err
+	// }
 
 	// Verify that the gas limit is <= 2^63-1
 	capacity := uint64(0x7fffffffffffffff)
@@ -808,17 +807,17 @@ func (p *Jumbo) prepareValidators(header *types.Header) error {
 	}
 	// sort validator by address
 	sort.Sort(validatorsAscending(newValidators))
-	if !p.chainConfig.IsLuban(header.Number) {
-		for _, validator := range newValidators {
-			header.Extra = append(header.Extra, validator.Bytes()...)
-		}
-	} else {
-		header.Extra = append(header.Extra, byte(len(newValidators)))
-		for _, validator := range newValidators {
-			header.Extra = append(header.Extra, validator.Bytes()...)
-			header.Extra = append(header.Extra, voteAddressMap[validator].Bytes()...)
-		}
+	// if !p.chainConfig.IsLuban(header.Number) {
+	// 	for _, validator := range newValidators {
+	// 		header.Extra = append(header.Extra, validator.Bytes()...)
+	// 	}
+	// } else {
+	header.Extra = append(header.Extra, byte(len(newValidators)))
+	for _, validator := range newValidators {
+		header.Extra = append(header.Extra, validator.Bytes()...)
+		header.Extra = append(header.Extra, voteAddressMap[validator].Bytes()...)
 	}
+	// }
 	return nil
 }
 
@@ -925,8 +924,8 @@ func (p *Jumbo) Prepare(chain consensus.ChainHeaderReader, header *types.Header)
 		header.Extra = append(header.Extra, bytes.Repeat([]byte{0x00}, extraVanity-nextForkHashSize-len(header.Extra))...)
 	}
 	header.Extra = header.Extra[:extraVanity-nextForkHashSize]
-	nextForkHash := forkid.NextForkHash(p.chainConfig, p.genesisHash, number)
-	header.Extra = append(header.Extra, nextForkHash[:]...)
+	// nextForkHash := forkid.NextForkHash(p.chainConfig, p.genesisHash, number)
+	// header.Extra = append(header.Extra, nextForkHash[:]...)
 
 	if err := p.prepareValidators(header); err != nil {
 		return err
@@ -943,7 +942,7 @@ func (p *Jumbo) Prepare(chain consensus.ChainHeaderReader, header *types.Header)
 	if parent == nil {
 		return consensus.ErrUnknownAncestor
 	}
-	header.Time = p.blockTimeForRamanujanFork(snap, header, parent)
+	// header.Time = p.blockTimeForRamanujanFork(snap, header, parent)
 	if header.Time < uint64(time.Now().Unix()) {
 		header.Time = uint64(time.Now().Unix())
 	}
@@ -963,21 +962,21 @@ func (p *Jumbo) verifyValidators(header *types.Header) error {
 	sort.Sort(validatorsAscending(newValidators))
 	var validatorsBytes []byte
 	validatorsNumber := len(newValidators)
-	if !p.chainConfig.IsLuban(header.Number) {
-		validatorsBytes = make([]byte, validatorsNumber*validatorBytesLengthBeforeLuban)
-		for i, validator := range newValidators {
-			copy(validatorsBytes[i*validatorBytesLengthBeforeLuban:], validator.Bytes())
-		}
-	} else {
-		if uint8(validatorsNumber) != header.Extra[extraVanity] {
-			return errMismatchingEpochValidators
-		}
-		validatorsBytes = make([]byte, validatorsNumber*validatorBytesLength)
-		for i, validator := range newValidators {
-			copy(validatorsBytes[i*validatorBytesLength:], validator.Bytes())
-			copy(validatorsBytes[i*validatorBytesLength+common.AddressLength:], voteAddressMap[validator].Bytes())
-		}
+	// if !p.chainConfig.IsLuban(header.Number) {
+	// 	validatorsBytes = make([]byte, validatorsNumber*validatorBytesLengthBeforeLuban)
+	// 	for i, validator := range newValidators {
+	// 		copy(validatorsBytes[i*validatorBytesLengthBeforeLuban:], validator.Bytes())
+	// 	}
+	// } else {
+	if uint8(validatorsNumber) != header.Extra[extraVanity] {
+		return errMismatchingEpochValidators
 	}
+	validatorsBytes = make([]byte, validatorsNumber*validatorBytesLength)
+	for i, validator := range newValidators {
+		copy(validatorsBytes[i*validatorBytesLength:], validator.Bytes())
+		copy(validatorsBytes[i*validatorBytesLength+common.AddressLength:], voteAddressMap[validator].Bytes())
+	}
+	// }
 	if !bytes.Equal(getValidatorBytesFromHeader(header, p.chainConfig, p.config), validatorsBytes) {
 		return errMismatchingEpochValidators
 	}
@@ -1068,17 +1067,17 @@ func (p *Jumbo) Finalize(chain consensus.ChainHeaderReader, header *types.Header
 	if err != nil {
 		return err
 	}
-	nextForkHash := forkid.NextForkHash(p.chainConfig, p.genesisHash, number)
-	if !snap.isMajorityFork(hex.EncodeToString(nextForkHash[:])) {
-		log.Debug("there is a possible fork, and your client is not the majority. Please check...", "nextForkHash", hex.EncodeToString(nextForkHash[:]))
-	}
+	// nextForkHash := forkid.NextForkHash(p.chainConfig, p.genesisHash, number)
+	// if !snap.isMajorityFork(hex.EncodeToString(nextForkHash[:])) {
+	// 	log.Debug("there is a possible fork, and your client is not the majority. Please check...", "nextForkHash", hex.EncodeToString(nextForkHash[:]))
+	// }
 	// If the block is an epoch end block, verify the validator list
 	// The verification can only be done when the state is ready, it can't be done in VerifyHeader.
 	if err := p.verifyValidators(header); err != nil {
 		return err
 	}
 
-	cx := chainContext{Chain: chain, parlia: p}
+	cx := chainContext{Chain: chain, jumbo: p}
 
 	// No block rewards in PoA, so the state remains as is and uncles are dropped
 	if header.Number.Cmp(common.Big1) == 0 {
@@ -1090,16 +1089,16 @@ func (p *Jumbo) Finalize(chain consensus.ChainHeaderReader, header *types.Header
 	if header.Difficulty.Cmp(diffInTurn) != 0 {
 		spoiledVal := snap.supposeValidator()
 		signedRecently := false
-		if p.chainConfig.IsPlato(header.Number) {
-			signedRecently = snap.SignRecently(spoiledVal)
-		} else {
-			for _, recent := range snap.Recents {
-				if recent == spoiledVal {
-					signedRecently = true
-					break
-				}
+		// if p.chainConfig.IsPlato(header.Number) {
+		// 	signedRecently = snap.SignRecently(spoiledVal)
+		// } else {
+		for _, recent := range snap.Recents {
+			if recent == spoiledVal {
+				signedRecently = true
+				break
 			}
 		}
+		//}
 
 		if !signedRecently {
 			log.Trace("slash validator", "block hash", header.Hash(), "address", spoiledVal)
@@ -1116,11 +1115,11 @@ func (p *Jumbo) Finalize(chain consensus.ChainHeaderReader, header *types.Header
 		return err
 	}
 
-	if p.chainConfig.IsPlato(header.Number) {
-		if err := p.distributeFinalityReward(chain, state, header, cx, txs, receipts, systemTxs, usedGas, false); err != nil {
-			return err
-		}
-	}
+	// if p.chainConfig.IsPlato(header.Number) {
+	// 	if err := p.distributeFinalityReward(chain, state, header, cx, txs, receipts, systemTxs, usedGas, false); err != nil {
+	// 		return err
+	// 	}
+	// }
 	if len(*systemTxs) > 0 {
 		return errors.New("the length of systemTxs do not match")
 	}
@@ -1132,7 +1131,7 @@ func (p *Jumbo) Finalize(chain consensus.ChainHeaderReader, header *types.Header
 func (p *Jumbo) FinalizeAndAssemble(chain consensus.ChainHeaderReader, header *types.Header, state *state.StateDB,
 	txs []*types.Transaction, uncles []*types.Header, receipts []*types.Receipt) (*types.Block, []*types.Receipt, error) {
 	// No block rewards in PoA, so the state remains as is and uncles are dropped
-	cx := chainContext{Chain: chain, parlia: p}
+	cx := chainContext{Chain: chain, jumbo: p}
 	if txs == nil {
 		txs = make([]*types.Transaction, 0)
 	}
@@ -1153,16 +1152,16 @@ func (p *Jumbo) FinalizeAndAssemble(chain consensus.ChainHeaderReader, header *t
 		}
 		spoiledVal := snap.supposeValidator()
 		signedRecently := false
-		if p.chainConfig.IsPlato(header.Number) {
-			signedRecently = snap.SignRecently(spoiledVal)
-		} else {
-			for _, recent := range snap.Recents {
-				if recent == spoiledVal {
-					signedRecently = true
-					break
-				}
+		// if p.chainConfig.IsPlato(header.Number) {
+		// 	signedRecently = snap.SignRecently(spoiledVal)
+		// } else {
+		for _, recent := range snap.Recents {
+			if recent == spoiledVal {
+				signedRecently = true
+				break
 			}
 		}
+		//}
 		if !signedRecently {
 			err = p.slash(spoiledVal, state, header, cx, &txs, &receipts, nil, &header.GasUsed, true)
 			if err != nil {
@@ -1192,10 +1191,10 @@ func (p *Jumbo) FinalizeAndAssemble(chain consensus.ChainHeaderReader, header *t
 	var rootHash common.Hash
 	wg := sync.WaitGroup{}
 	wg.Add(2)
-	go func() {
-		rootHash = state.IntermediateRoot(chain.Config().IsEIP158(header.Number))
-		wg.Done()
-	}()
+	// go func() {
+	// 	rootHash = state.IntermediateRoot(chain.Config().IsEIP158(header.Number))
+	// 	wg.Done()
+	// }()
 	go func() {
 		blk = types.NewBlock(header, txs, nil, receipts, trie.NewStackTrie(nil))
 		wg.Done()
@@ -1276,12 +1275,13 @@ func (p *Jumbo) Authorize(val common.Address, signFn SignerFn, signTxFn SignerTx
 
 // Argument leftOver is the time reserved for block finalize(calculate root, distribute income...)
 func (p *Jumbo) Delay(chain consensus.ChainReader, header *types.Header, leftOver *time.Duration) *time.Duration {
-	number := header.Number.Uint64()
-	snap, err := p.snapshot(chain, number-1, header.ParentHash, nil)
-	if err != nil {
-		return nil
-	}
-	delay := p.delayForRamanujanFork(snap, header)
+	// number := header.Number.Uint64()
+	// snap, err := p.snapshot(chain, number-1, header.ParentHash, nil)
+	// if err != nil {
+	// 	return nil
+	// }
+	// delay := p.delayForRamanujanFork(snap, header)
+	delay := time.Duration(0)
 
 	if *leftOver >= time.Duration(p.config.Period)*time.Second {
 		// ignore invalid leftOver
@@ -1318,7 +1318,8 @@ func (p *Jumbo) Seal(chain consensus.ChainHeaderReader, block *types.Block, resu
 	}
 	// Don't hold the val fields for the entire sealing procedure
 	p.lock.RLock()
-	val, signFn := p.val, p.signFn
+	// val, signFn := p.val, p.signFn
+	val := p.val
 	p.lock.RUnlock()
 
 	snap, err := p.snapshot(chain, number-1, header.ParentHash, nil)
@@ -1338,55 +1339,55 @@ func (p *Jumbo) Seal(chain consensus.ChainHeaderReader, block *types.Block, resu
 	}
 
 	// Sweet, the protocol permits us to sign the block, wait for our time
-	delay := p.delayForRamanujanFork(snap, header)
+	// delay := p.delayForRamanujanFork(snap, header)
 
-	log.Info("Sealing block with", "number", number, "delay", delay, "headerDifficulty", header.Difficulty, "val", val.Hex())
+	// log.Info("Sealing block with", "number", number, "delay", delay, "headerDifficulty", header.Difficulty, "val", val.Hex())
 
-	// Wait until sealing is terminated or delay timeout.
-	log.Trace("Waiting for slot to sign and propagate", "delay", common.PrettyDuration(delay))
-	go func() {
-		select {
-		case <-stop:
-			return
-		case <-time.After(delay):
-		}
+	// // Wait until sealing is terminated or delay timeout.
+	// log.Trace("Waiting for slot to sign and propagate", "delay", common.PrettyDuration(delay))
+	// go func() {
+	// 	select {
+	// 	case <-stop:
+	// 		return
+	// 	case <-time.After(delay):
+	// 	}
 
-		err := p.assembleVoteAttestation(chain, header)
-		if err != nil {
-			/* If the vote attestation can't be assembled successfully, the blockchain won't get
-			   fast finalized, but it can be tolerated, so just report this error here. */
-			log.Error("Assemble vote attestation failed when sealing", "err", err)
-		}
+	// 	err := p.assembleVoteAttestation(chain, header)
+	// 	if err != nil {
+	// 		/* If the vote attestation can't be assembled successfully, the blockchain won't get
+	// 		   fast finalized, but it can be tolerated, so just report this error here. */
+	// 		log.Error("Assemble vote attestation failed when sealing", "err", err)
+	// 	}
 
-		// Sign all the things!
-		sig, err := signFn(accounts.Account{Address: val}, accounts.MimetypeParlia, ParliaRLP(header, p.chainConfig.ChainID))
-		if err != nil {
-			log.Error("Sign for the block header failed when sealing", "err", err)
-			return
-		}
-		copy(header.Extra[len(header.Extra)-extraSeal:], sig)
+	// 	// Sign all the things!
+	// 	sig, err := signFn(accounts.Account{Address: val}, accounts.MimetypeJumbo, ParliaRLP(header, p.chainConfig.ChainID))
+	// 	if err != nil {
+	// 		log.Error("Sign for the block header failed when sealing", "err", err)
+	// 		return
+	// 	}
+	// 	copy(header.Extra[len(header.Extra)-extraSeal:], sig)
 
-		if p.shouldWaitForCurrentBlockProcess(chain, header, snap) {
-			log.Info("Waiting for received in turn block to process")
-			select {
-			case <-stop:
-				log.Info("Received block process finished, abort block seal")
-				return
-			case <-time.After(time.Duration(processBackOffTime) * time.Second):
-				if chain.CurrentHeader().Number.Uint64() >= header.Number.Uint64() {
-					log.Info("Process backoff time exhausted, and current header has updated to abort this seal")
-					return
-				}
-				log.Info("Process backoff time exhausted, start to seal block")
-			}
-		}
+	// 	if p.shouldWaitForCurrentBlockProcess(chain, header, snap) {
+	// 		log.Info("Waiting for received in turn block to process")
+	// 		select {
+	// 		case <-stop:
+	// 			log.Info("Received block process finished, abort block seal")
+	// 			return
+	// 		case <-time.After(time.Duration(processBackOffTime) * time.Second):
+	// 			if chain.CurrentHeader().Number.Uint64() >= header.Number.Uint64() {
+	// 				log.Info("Process backoff time exhausted, and current header has updated to abort this seal")
+	// 				return
+	// 			}
+	// 			log.Info("Process backoff time exhausted, start to seal block")
+	// 		}
+	// 	}
 
-		select {
-		case results <- block.WithSeal(header):
-		default:
-			log.Warn("Sealing result is not read by miner", "sealhash", SealHash(header, p.chainConfig.ChainID))
-		}
-	}()
+	// 	select {
+	// 	case results <- block.WithSeal(header):
+	// 	default:
+	// 		log.Warn("Sealing result is not read by miner", "sealhash", SealHash(header, p.chainConfig.ChainID))
+	// 	}
+	// }()
 
 	return nil
 }
@@ -1903,12 +1904,12 @@ func (p *Jumbo) backOffTime(snap *Snapshot, header *types.Header, val common.Add
 
 // chain context
 type chainContext struct {
-	Chain  consensus.ChainHeaderReader
-	parlia consensus.Engine
+	Chain consensus.ChainHeaderReader
+	jumbo consensus.Engine
 }
 
 func (c chainContext) Engine() consensus.Engine {
-	return c.parlia
+	return c.jumbo
 }
 
 func (c chainContext) GetHeader(hash common.Hash, number uint64) *types.Header {

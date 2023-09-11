@@ -608,6 +608,10 @@ func NewMessage(from common.Address, to *common.Address, nonce uint64, amount *b
 	}
 }
 
+func (t *TransactionsByPriceAndNonce) CurrentSize() int {
+	return len(t.heads)
+}
+
 // AsMessage returns the transaction as a core.Message.
 func (tx *Transaction) AsMessage(s Signer, baseFee *big.Int) (Message, error) {
 	msg := Message{

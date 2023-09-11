@@ -246,25 +246,26 @@ func Transition(ctx *cli.Context) error {
 		return NewError(ErrorJson, fmt.Errorf("failed signing transactions: %v", err))
 	}
 	// Sanity check, to not `panic` in state_transition
-	if chainConfig.IsLondon(big.NewInt(int64(prestate.Env.Number))) {
-		if prestate.Env.BaseFee == nil {
-			return NewError(ErrorConfig, errors.New("EIP-1559 config but missing 'currentBaseFee' in env section"))
-		}
-	}
-	isMerged := chainConfig.TerminalTotalDifficulty != nil && chainConfig.TerminalTotalDifficulty.BitLen() == 0
+	// if chainConfig.IsLondon(big.NewInt(int64(prestate.Env.Number))) {
+	// 	if prestate.Env.BaseFee == nil {
+	// 		return NewError(ErrorConfig, errors.New("EIP-1559 config but missing 'currentBaseFee' in env section"))
+	// 	}
+	// }
+	// isMerged := chainConfig.TerminalTotalDifficulty != nil && chainConfig.TerminalTotalDifficulty.BitLen() == 0
 	env := prestate.Env
-	if isMerged {
-		// post-merge:
-		// - random must be supplied
-		// - difficulty must be zero
-		switch {
-		case env.Random == nil:
-			return NewError(ErrorConfig, errors.New("post-merge requires currentRandom to be defined in env"))
-		case env.Difficulty != nil && env.Difficulty.BitLen() != 0:
-			return NewError(ErrorConfig, errors.New("post-merge difficulty must be zero (or omitted) in env"))
-		}
-		prestate.Env.Difficulty = nil
-	} else if env.Difficulty == nil {
+	// if isMerged {
+	// 	// post-merge:
+	// 	// - random must be supplied
+	// 	// - difficulty must be zero
+	// 	switch {
+	// 	case env.Random == nil:
+	// 		return NewError(ErrorConfig, errors.New("post-merge requires currentRandom to be defined in env"))
+	// 	case env.Difficulty != nil && env.Difficulty.BitLen() != 0:
+	// 		return NewError(ErrorConfig, errors.New("post-merge difficulty must be zero (or omitted) in env"))
+	// 	}
+	// 	prestate.Env.Difficulty = nil
+	// } else
+	if env.Difficulty == nil {
 		// pre-merge:
 		// If difficulty was not provided by caller, we need to calculate it.
 		switch {
@@ -410,7 +411,7 @@ func saveFile(baseDir, filename string, data interface{}) error {
 
 // dispatchOutput writes the output data to either stderr or stdout, or to the specified
 // files
-func dispatchOutput(ctx *cli.Context, baseDir string, result *ExecutionResult, alloc Alloc, body hexutil.Bytes) error {
+func dispatchOutput(ctx cli.Context, baseDir string, result ExecutionResult, alloc Alloc, body hexutil.Bytes) error {
 	stdOutObject := make(map[string]interface{})
 	stdErrObject := make(map[string]interface{})
 	dispatch := func(baseDir, fName, name string, obj interface{}) error {

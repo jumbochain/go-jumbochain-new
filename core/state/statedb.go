@@ -770,6 +770,17 @@ func (s *StateDB) GetRefund() uint64 {
 	return s.refund
 }
 
+// WaitPipeVerification waits until the snapshot been verified
+func (s *StateDB) WaitPipeVerification() error {
+	// Need to wait for the parent trie to commit
+	if s.snap != nil {
+		if valid := s.snap.WaitAndGetVerifyRes(); !valid {
+			return fmt.Errorf("verification on parent snap failed")
+		}
+	}
+	return nil
+}
+
 // Finalise finalises the state by removing the s destructed objects and clears
 // the journal as well as the refunds. Finalise, however, will not push any updates
 // into the tries just yet. Only IntermediateRoot or Commit will do that.
@@ -1034,6 +1045,34 @@ func (s *StateDB) AddSlotToAccessList(addr common.Address, slot common.Hash) {
 			address: &addr,
 			slot:    &slot,
 		})
+	}
+}
+
+// CorrectAccountsRoot will fix account roots in pipecommit mode
+func (s *StateDB) CorrectAccountsRoot(blockRoot common.Hash) {
+	var snapshot snapshot.Snapshot
+	if blockRoot == (common.Hash{}) {
+		snapshot = s.snap
+	} else if s.snaps != nil {
+		snapshot = s.snaps.Snapshot(blockRoot)
+	}
+
+	if snapshot == nil {
+		return
+	}
+	if accounts, err := snapshot.Accounts(); err == nil && accounts != nil {
+		for _, obj := range s.stateObjects {
+			if !obj.deleted {
+				if account, exist := accounts[crypto.Keccak256Hash(obj.address[:])]; exist {
+					if len(account.Root) == 0 {
+						obj.data.Root = emptyRoot
+					} else {
+						obj.data.Root = common.BytesToHash(account.Root)
+					}
+					obj.rootCorrected = true
+				}
+			}
+		}
 	}
 }
 

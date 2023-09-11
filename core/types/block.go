@@ -174,7 +174,7 @@ type Block struct {
 
 	// Td is used by package core to store the total difficulty
 	// of the chain up to and including the block.
-	td *big.Int
+	//td *big.Int
 
 	// These fields are used by package eth to track
 	// inter-peer block relay.
@@ -197,7 +197,7 @@ type extblock struct {
 // are ignored and set to values derived from the given txs, uncles
 // and receipts.
 func NewBlock(header *Header, txs []*Transaction, uncles []*Header, receipts []*Receipt, hasher TrieHasher) *Block {
-	b := &Block{header: CopyHeader(header), td: new(big.Int)}
+	b := &Block{header: CopyHeader(header)}
 
 	// TODO: panic if len(txs) != len(receipts)
 	if len(txs) == 0 {
@@ -234,6 +234,8 @@ func NewBlock(header *Header, txs []*Transaction, uncles []*Header, receipts []*
 func NewBlockWithHeader(header *Header) *Block {
 	return &Block{header: CopyHeader(header)}
 }
+
+func (b *Block) SetRoot(root common.Hash) { b.header.Root = root }
 
 // CopyHeader creates a deep copy of a block header to prevent side effects from
 // modifying a header variable.
