@@ -27,6 +27,10 @@ import (
 	"jumbochain.org/rpc"
 )
 
+var (
+	SystemAddress = common.HexToAddress("0xffffFFFfFFffffffffffffffFfFFFfffFFFfFFfE")
+)
+
 // ChainHeaderReader defines a small collection of methods needed to access the local
 // blockchain during header verification.
 type ChainHeaderReader interface {
@@ -56,6 +60,10 @@ type ChainReader interface {
 
 	// GetBlock retrieves a block from the database by hash and number.
 	GetBlock(hash common.Hash, number uint64) *types.Block
+}
+
+type VotePool interface {
+	FetchVoteByBlockHash(blockHash common.Hash) []*types.VoteEnvelope
 }
 
 // Engine is an algorithm agnostic consensus engine.

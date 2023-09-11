@@ -33,25 +33,19 @@ var (
 	// RinkebyGenesisHash = common.HexToHash("0x6341fd3daf94b748c72ced5a5b26028f2474f5f00d824504e4fa37a75767e177")
 	// GoerliGenesisHash  = common.HexToHash("0xbf7e331f7f7c1dd2e05159666b3bf8bc7a8a3a9eb1d518969eab529dd9b88c1a")
 	// KilnGenesisHash    = common.HexToHash("0x51c7fe41be669f69c45c33a56982cbde405313342d9e2b00d7c91a7b284dd4f8")
+	JumboGenesisHash = common.HexToHash("0x0d21840abff46b96c84b2ac9e10e4f5cdaeb5693cb665db62a2f3b02d2d57b5b")
 )
 
 // TrustedCheckpoints associates each known checkpoint with the genesis hash of
 // the chain it belongs to.
 var TrustedCheckpoints = map[common.Hash]*TrustedCheckpoint{
 	MainnetGenesisHash: MainnetTrustedCheckpoint,
-	// RopstenGenesisHash: RopstenTrustedCheckpoint,
-	// SepoliaGenesisHash: SepoliaTrustedCheckpoint,
-	// RinkebyGenesisHash: RinkebyTrustedCheckpoint,
-	// GoerliGenesisHash:  GoerliTrustedCheckpoint,
 }
 
 // CheckpointOracles associates each known checkpoint oracles with the genesis hash of
 // the chain it belongs to.
 var CheckpointOracles = map[common.Hash]*CheckpointOracleConfig{
 	MainnetGenesisHash: MainnetCheckpointOracle,
-	// RopstenGenesisHash: RopstenCheckpointOracle,
-	// RinkebyGenesisHash: RinkebyCheckpointOracle,
-	// GoerliGenesisHash:  GoerliCheckpointOracle,
 }
 
 var (
@@ -73,7 +67,11 @@ var (
 		// BerlinBlock:         big.NewInt(12_244_000),
 		// LondonBlock:         big.NewInt(12_965_000),
 		// ArrowGlacierBlock:   big.NewInt(13_773_000),
-		Ethash: new(EthashConfig),
+		//Ethash: new(EthashConfig),
+		JumboConsensus: &JumboConsensusConfig{
+			Period: 3,
+			Epoch:  200,
+		},
 	}
 
 	// MainnetTrustedCheckpoint contains the light client trusted checkpoint for the main network.
@@ -259,16 +257,16 @@ var (
 	//
 	// This configuration is intentionally not using keyed fields to force anyone
 	// adding flags to the config to also have to set these fields.
-	AllEthashProtocolChanges = &ChainConfig{big.NewInt(1337), new(EthashConfig), nil}
+	AllEthashProtocolChanges = &ChainConfig{big.NewInt(10), nil, nil, &JumboConsensusConfig{Period: 0, Epoch: 30000}}
 
 	// AllCliqueProtocolChanges contains every protocol change (EIPs) introduced
 	// and accepted by the Ethereum core developers into the Clique consensus.
 	//
 	// This configuration is intentionally not using keyed fields to force anyone
 	// adding flags to the config to also have to set these fields.
-	AllCliqueProtocolChanges = &ChainConfig{big.NewInt(1337), nil, &CliqueConfig{Period: 0, Epoch: 30000}}
+	AllCliqueProtocolChanges = &ChainConfig{big.NewInt(10), nil, &CliqueConfig{Period: 0, Epoch: 30000}, nil}
 
-	TestChainConfig = &ChainConfig{big.NewInt(1), new(EthashConfig), nil}
+	TestChainConfig = &ChainConfig{big.NewInt(1), new(EthashConfig), nil, nil}
 	TestRules       = TestChainConfig.Rules(new(big.Int), false)
 )
 
@@ -355,8 +353,9 @@ type ChainConfig struct {
 	// TerminalTotalDifficulty *big.Int `json:"terminalTotalDifficulty,omitempty"`
 
 	// Various consensus engines
-	Ethash *EthashConfig `json:"ethash,omitempty"`
-	Clique *CliqueConfig `json:"clique,omitempty"`
+	Ethash         *EthashConfig         `json:"ethash,omitempty"`
+	Clique         *CliqueConfig         `json:"clique,omitempty"`
+	JumboConsensus *JumboConsensusConfig `json:"parlia,omitempty" toml:",omitempty"`
 }
 
 // EthashConfig is the consensus engine configs for proof-of-work based sealing.
@@ -386,6 +385,8 @@ func (c *ChainConfig) String() string {
 		engine = c.Ethash
 	case c.Clique != nil:
 		engine = c.Clique
+	case c.JumboConsensus != nil:
+		engine = c.JumboConsensus
 	default:
 		engine = "unknown"
 	}
@@ -485,6 +486,16 @@ func (c *ChainConfig) String() string {
 // 	}
 // 	return parentTotalDiff.Cmp(c.TerminalTotalDifficulty) < 0 && totalDiff.Cmp(c.TerminalTotalDifficulty) >= 0
 // }
+
+type JumboConsensusConfig struct {
+	Period uint64 `json:"period"` // Number of seconds between blocks to enforce
+	Epoch  uint64 `json:"epoch"`  // Epoch length to update validatorSet
+}
+
+// String implements the stringer interface, returning the consensus engine details.
+func (b *JumboConsensusConfig) String() string {
+	return "jumbo"
+}
 
 // CheckCompatible checks whether scheduled fork transitions have been imported
 // with a mismatching chain configuration.
@@ -681,7 +692,7 @@ func (c *ChainConfig) Rules(num *big.Int, isMerge bool) Rules {
 		chainID = new(big.Int)
 	}
 	return Rules{
-		ChainID:          new(big.Int).Set(chainID),
+		ChainID: new(big.Int).Set(chainID),
 		// IsHomestead:      c.IsHomestead(num),
 		// IsEIP150:         c.IsEIP150(num),
 		// IsEIP155:         c.IsEIP155(num),
@@ -692,6 +703,6 @@ func (c *ChainConfig) Rules(num *big.Int, isMerge bool) Rules {
 		// IsIstanbul:       c.IsIstanbul(num),
 		// IsBerlin:         c.IsBerlin(num),
 		// IsLondon:         c.IsLondon(num),
-		IsMerge:          isMerge,
+		IsMerge: isMerge,
 	}
 }
