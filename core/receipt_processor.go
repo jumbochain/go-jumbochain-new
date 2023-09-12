@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"sync"
 
-	"jumbochain.org/types"
+	"jumbochain.org/core/types"
 )
 
 type ReceiptProcessor interface {

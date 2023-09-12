@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"math/big"
 	"sort"
+	"sync"
 	"time"
 
 	"jumbochain.org/common"
@@ -43,6 +44,7 @@ type revision struct {
 var (
 	// emptyRoot is the known root hash of an empty trie.
 	emptyRoot = common.HexToHash("56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421")
+	emptyAddr = crypto.Keccak256Hash(common.Address{}.Bytes())
 )
 
 type proofList [][]byte
@@ -56,23 +58,36 @@ func (n *proofList) Delete(key []byte) error {
 	panic("not supported")
 }
 
+func (s *StateDB) IsLightProcessed() bool {
+	return s.lightProcessed
+}
+
+func (s *StateDB) EnableWriteOnSharedStorage() {
+	s.writeOnSharedStorage = true
+}
+
 // StateDB structs within the ethereum protocol are used to store anything
 // within the merkle trie. StateDBs take care of caching and storing
 // nested states. It's the general query interface to retrieve:
 // * Contracts
 // * Accounts
 type StateDB struct {
-	db           Database
-	prefetcher   *triePrefetcher
-	originalRoot common.Hash // The pre-state root, before any changes were made
-	trie         Trie
-	hasher       crypto.KeccakState
+	lightProcessed       bool
+	prefetcherLock       sync.Mutex
+	expectedRoot         common.Hash // The state root in the block header
+	pipeCommit           bool
+	db                   Database
+	prefetcher           *triePrefetcher
+	originalRoot         common.Hash // The pre-state root, before any changes were made
+	trie                 Trie
+	hasher               crypto.KeccakState
+	writeOnSharedStorage bool // Write to the shared origin storage of a stateObject while reading from the underlying storage layer.
 
 	snaps         *snapshot.Tree
 	snap          snapshot.Snapshot
-	snapDestructs map[common.Hash]struct{}
-	snapAccounts  map[common.Hash][]byte
-	snapStorage   map[common.Hash]map[common.Hash][]byte
+	snapDestructs map[common.Address]struct{}
+	snapAccounts  map[common.Address][]byte
+	snapStorage   map[common.Address]map[string][]byte
 
 	// This map holds 'live' objects, which will get modified while processing a state transition.
 	stateObjects        map[common.Address]*stateObject
@@ -146,9 +161,9 @@ func New(root common.Hash, db Database, snaps *snapshot.Tree) (*StateDB, error) 
 	}
 	if sdb.snaps != nil {
 		if sdb.snap = sdb.snaps.Snapshot(root); sdb.snap != nil {
-			sdb.snapDestructs = make(map[common.Hash]struct{})
-			sdb.snapAccounts = make(map[common.Hash][]byte)
-			sdb.snapStorage = make(map[common.Hash]map[common.Hash][]byte)
+			sdb.snapDestructs = make(map[common.Address]struct{})
+			sdb.snapAccounts = make(map[common.Address][]byte)
+			sdb.snapStorage = make(map[common.Address]map[string][]byte)
 		}
 	}
 	return sdb, nil
@@ -167,6 +182,115 @@ func (s *StateDB) StartPrefetcher(namespace string) {
 	}
 }
 
+// It is mainly for state prefetcher to do trie prefetch right now.
+func (s *StateDB) CopyDoPrefetch() *StateDB {
+	return s.copyInternal(true)
+}
+
+// If doPrefetch is true, it tries to reuse the prefetcher, the copied StateDB will do active trie prefetch.
+// otherwise, just do inactive copy trie prefetcher.
+func (s *StateDB) copyInternal(doPrefetch bool) *StateDB {
+	// Copy all the basic fields, initialize the memory ones
+	state := &StateDB{
+		db:                  s.db,
+		trie:                s.db.CopyTrie(s.trie),
+		stateObjects:        make(map[common.Address]*StateObject, len(s.journal.dirties)),
+		stateObjectsPending: make(map[common.Address]struct{}, len(s.stateObjectsPending)),
+		stateObjectsDirty:   make(map[common.Address]struct{}, len(s.journal.dirties)),
+		storagePool:         s.storagePool,
+		refund:              s.refund,
+		logs:                make(map[common.Hash][]*types.Log, len(s.logs)),
+		logSize:             s.logSize,
+		preimages:           make(map[common.Hash][]byte, len(s.preimages)),
+		journal:             newJournal(),
+		hasher:              crypto.NewKeccakState(),
+	}
+	// Copy the dirty states, logs, and preimages
+	for addr := range s.journal.dirties {
+		// As documented [here](https://github.com/ethereum/go-ethereum/pull/16485#issuecomment-380438527),
+		// and in the Finalise-method, there is a case where an object is in the journal but not
+		// in the stateObjects: OOG after touch on ripeMD prior to Byzantium. Thus, we need to check for
+		// nil
+		if object, exist := s.stateObjects[addr]; exist {
+			// Even though the original object is dirty, we are not copying the journal,
+			// so we need to make sure that anyside effect the journal would have caused
+			// during a commit (or similar op) is already applied to the copy.
+			state.stateObjects[addr] = object.deepCopy(state)
+
+			state.stateObjectsDirty[addr] = struct{}{}   // Mark the copy dirty to force internal (code/state) commits
+			state.stateObjectsPending[addr] = struct{}{} // Mark the copy pending to force external (account) commits
+		}
+	}
+	// Above, we don't copy the actual journal. This means that if the copy is copied, the
+	// loop above will be a no-op, since the copy's journal is empty.
+	// Thus, here we iterate over stateObjects, to enable copies of copies
+	for addr := range s.stateObjectsPending {
+		if _, exist := state.stateObjects[addr]; !exist {
+			state.stateObjects[addr] = s.stateObjects[addr].deepCopy(state)
+		}
+		state.stateObjectsPending[addr] = struct{}{}
+	}
+	for addr := range s.stateObjectsDirty {
+		if _, exist := state.stateObjects[addr]; !exist {
+			state.stateObjects[addr] = s.stateObjects[addr].deepCopy(state)
+		}
+		state.stateObjectsDirty[addr] = struct{}{}
+	}
+	for hash, logs := range s.logs {
+		cpy := make([]*types.Log, len(logs))
+		for i, l := range logs {
+			cpy[i] = new(types.Log)
+			*cpy[i] = *l
+		}
+		state.logs[hash] = cpy
+	}
+	for hash, preimage := range s.preimages {
+		state.preimages[hash] = preimage
+	}
+	// Do we need to copy the access list? In practice: No. At the start of a
+	// transaction, the access list is empty. In practice, we only ever copy state
+	// _between_ transactions/blocks, never in the middle of a transaction.
+	// However, it doesn't cost us much to copy an empty list, so we do it anyway
+	// to not blow up if we ever decide copy it in the middle of a transaction
+	if s.accessList != nil {
+		state.accessList = s.accessList.Copy()
+	}
+
+	state.prefetcher = s.prefetcher
+	if s.prefetcher != nil && !doPrefetch {
+		// If there's a prefetcher running, make an inactive copy of it that can
+		// only access data but does not actively preload (since the user will not
+		// know that they need to explicitly terminate an active copy).
+		state.prefetcher = state.prefetcher.copy()
+	}
+	if s.snaps != nil {
+		// In order for the miner to be able to use and make additions
+		// to the snapshot tree, we need to copy that aswell.
+		// Otherwise, any block mined by ourselves will cause gaps in the tree,
+		// and force the miner to operate trie-backed only
+		state.snaps = s.snaps
+		state.snap = s.snap
+		// deep copy needed
+		state.snapDestructs = make(map[common.Address]struct{})
+		for k, v := range s.snapDestructs {
+			state.snapDestructs[k] = v
+		}
+		state.snapAccounts = make(map[common.Address][]byte)
+		for k, v := range s.snapAccounts {
+			state.snapAccounts[k] = v
+		}
+		state.snapStorage = make(map[common.Address]map[string][]byte)
+		for k, v := range s.snapStorage {
+			temp := make(map[string][]byte)
+			for kk, vv := range v {
+				temp[kk] = vv
+			}
+			state.snapStorage[k] = temp
+		}
+	}
+	return state
+}
+
 // StopPrefetcher terminates a running prefetcher and reports any leftover stats
 // from the gathered metrics.
 func (s *StateDB) StopPrefetcher() {
@@ -174,6 +298,49 @@ func (s *StateDB) StopPrefetcher() {
 		s.prefetcher.close()
 		s.prefetcher = nil
 	}
+}
+
+// NewWithSharedPool creates a new state with sharedStorge on layer 1.5
+func NewWithSharedPool(root common.Hash, db Database, snaps *snapshot.Tree) (*StateDB, error) {
+	statedb, err := newStateDB(root, db, snaps)
+	if err != nil {
+		return nil, err
+	}
+	statedb.storagePool = NewStoragePool()
+	return statedb, nil
+}
+
+func newStateDB(root common.Hash, db Database, snaps *snapshot.Tree) (*StateDB, error) {
+	sdb := &StateDB{
+		db:                  db,
+		originalRoot:        root,
+		snaps:               snaps,
+		stateObjects:        make(map[common.Address]*StateObject, defaultNumOfSlots),
+		stateObjectsPending: make(map[common.Address]struct{}, defaultNumOfSlots),
+		stateObjectsDirty:   make(map[common.Address]struct{}, defaultNumOfSlots),
+		logs:                make(map[common.Hash][]*types.Log, defaultNumOfSlots),
+		preimages:           make(map[common.Hash][]byte),
+		journal:             newJournal(),
+		hasher:              crypto.NewKeccakState(),
+	}
+
+	if sdb.snaps != nil {
+		if sdb.snap = sdb.snaps.Snapshot(root); sdb.snap != nil {
+			sdb.snapDestructs = make(map[common.Address]struct{})
+			sdb.snapAccounts = make(map[common.Address][]byte)
+			sdb.snapStorage = make(map[common.Address]map[string][]byte)
+		}
+	}
+
+	snapVerified := sdb.snap != nil && sdb.snap.Verified()
+	tr, err := db.OpenTrie(root)
+	// return error when 1. failed to open trie and 2. the snap is nil or the snap is not nil and done verification
+	if err != nil && (sdb.snap == nil || snapVerified) {
+		return nil, err
+	}
+	_, sdb.noTrie = tr.(*trie.EmptyTrie)
+	sdb.trie = tr
+	return sdb, nil
 }
 
 // setError remembers the first non-nil error it is called with.
@@ -255,6 +422,54 @@ func (s *StateDB) Exist(addr common.Address) bool {
 func (s *StateDB) Empty(addr common.Address) bool {
 	so := s.getStateObject(addr)
 	return so == nil || so.empty()
+}
+
+// In mining mode, we will try multi-fillTransactions to get the most profitable one.
+// StateDB will be created for each fillTransactions with same block height.
+// Share a single triePrefetcher to avoid too much prefetch routines.
+func (s *StateDB) TransferPrefetcher(prev *StateDB) {
+	if prev == nil {
+		return
+	}
+	var fetcher *triePrefetcher
+
+	prev.prefetcherLock.Lock()
+	fetcher = prev.prefetcher
+	prev.prefetcher = nil
+	prev.prefetcherLock.Unlock()
+
+	s.prefetcherLock.Lock()
+	s.prefetcher = fetcher
+	s.prefetcherLock.Unlock()
+}
+
+func (s *StateDB) TriePrefetchInAdvance(block *types.Block, signer types.Signer) {
+	// s is a temporary throw away StateDB, s.prefetcher won't be resetted to nil
+	// so no need to add lock for s.prefetcher
+	prefetcher := s.prefetcher
+	if prefetcher == nil {
+		return
+	}
+	accounts := make(map[common.Address]struct{}, block.Transactions().Len()<<1)
+	for _, tx := range block.Transactions() {
+		from, err := types.Sender(signer, tx)
+		if err != nil {
+			// invalid block, skip prefetch
+			return
+		}
+		accounts[from] = struct{}{}
+		if tx.To() != nil {
+			accounts[*tx.To()] = struct{}{}
+		}
+	}
+	addressesToPrefetch := make([][]byte, 0, len(accounts))
+	for addr := range accounts {
+		addressesToPrefetch = append(addressesToPrefetch, common.CopyBytes(addr[:])) // Copy needed for closure
+	}
+
+	if len(addressesToPrefetch) > 0 {
+		prefetcher.prefetch(s.originalRoot, addressesToPrefetch, emptyAddr)
+	}
 }
 
 // GetBalance retrieves the balance from the given address or 0 if object not found
@@ -362,6 +577,10 @@ func (s *StateDB) StorageTrie(addr common.Address) Trie {
 	return cpy.getTrie(s.db)
 }
 
+// Mark that the block is processed by diff layer
+func (s *StateDB) SetExpectedStateRoot(root common.Hash) {
+	s.expectedRoot = root
+}
 func (s *StateDB) HasSuicided(addr common.Address) bool {
 	stateObject := s.getStateObject(addr)
 	if stateObject != nil {
@@ -721,15 +940,15 @@ func (s *StateDB) Copy() *StateDB {
 		state.snaps = s.snaps
 		state.snap = s.snap
 		// deep copy needed
-		state.snapDestructs = make(map[common.Hash]struct{})
+		state.snapDestructs = make(map[common.Address]struct{})
 		for k, v := range s.snapDestructs {
 			state.snapDestructs[k] = v
 		}
-		state.snapAccounts = make(map[common.Hash][]byte)
+		state.snapAccounts = make(map[common.Address][]byte)
 		for k, v := range s.snapAccounts {
 			state.snapAccounts[k] = v
 		}
-		state.snapStorage = make(map[common.Hash]map[common.Hash][]byte)
+		state.snapStorage = make(map[common.Address]map[string][]byte)
 		for k, v := range s.snapStorage {
 			temp := make(map[common.Hash][]byte)
 			for kk, vv := range v {
@@ -1073,6 +1292,13 @@ func (s *StateDB) CorrectAccountsRoot(blockRoot common.Hash) {
 				}
 			}
 		}
+	}
+}
+
+// Enable the pipeline commit function of statedb
+func (s *StateDB) EnablePipeCommit() {
+	if s.snap != nil && s.snaps.Layers() > 1 {
+		s.pipeCommit = true
 	}
 }
 

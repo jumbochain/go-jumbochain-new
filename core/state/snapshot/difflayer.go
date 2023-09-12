@@ -118,9 +118,10 @@ type diffLayer struct {
 	storageList map[common.Hash][]common.Hash          // List of storage slots for iterated retrievals, one per account. Any existing lists are sorted if non-nil
 	storageData map[common.Hash]map[common.Hash][]byte // Keyed storage slots for direct retrieval. one per account (nil means deleted)
 
-	diffed *bloomfilter.Filter // Bloom filter tracking all the diffed items up to the disk layer
-
-	lock sync.RWMutex
+	diffed     *bloomfilter.Filter // Bloom filter tracking all the diffed items up to the disk layer
+	verifiedCh chan struct{}       // the difflayer is verified when verifiedCh is nil or closed
+	valid      bool                // mark the difflayer is valid or not.
+	lock       sync.RWMutex
 }
 
 // destructBloomHasher is a wrapper around a common.Hash to satisfy the interface
@@ -556,4 +557,31 @@ func (dl *diffLayer) StorageList(accountHash common.Hash) ([]common.Hash, bool) 
 	dl.storageList[accountHash] = storageList
 	dl.memory += uint64(len(dl.storageList)*common.HashLength + common.HashLength)
 	return storageList, destructed
+}
+
+// Accounts directly retrieves all accounts in current snapshot in
+// the snapshot slim data format.
+func (dl *diffLayer) Accounts() (map[common.Hash]*Account, error) {
+	dl.lock.RLock()
+	defer dl.lock.RUnlock()
+
+	accounts := make(map[common.Hash]*Account, len(dl.accountData))
+	for hash, data := range dl.accountData {
+		account := new(Account)
+		if err := rlp.DecodeBytes(data, account); err != nil {
+			return nil, err
+		}
+		accounts[hash] = account
+	}
+
+	return accounts, nil
+}
+
+// WaitAndGetVerifyRes will wait until the diff layer been verified and return the verification result
+func (dl *diffLayer) WaitAndGetVerifyRes() bool {
+	if dl.verifiedCh == nil {
+		return true
+	}
+	<-dl.verifiedCh
+	return dl.valid
 }

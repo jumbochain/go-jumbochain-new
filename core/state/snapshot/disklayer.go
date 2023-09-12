@@ -164,3 +164,20 @@ func (dl *diskLayer) Storage(accountHash, storageHash common.Hash) ([]byte, erro
 func (dl *diskLayer) Update(blockHash common.Hash, destructs map[common.Hash]struct{}, accounts map[common.Hash][]byte, storage map[common.Hash]map[common.Hash][]byte) *diffLayer {
 	return newDiffLayer(dl, blockHash, destructs, accounts, storage)
 }
+
+func (dl *diskLayer) CorrectAccounts(map[common.Hash][]byte) {
+}
+func (dl *diskLayer) MarkValid() {}
+
+// Accounts directly retrieves all accounts in current snapshot in
+// the snapshot slim data format.
+func (dl *diskLayer) Accounts() (map[common.Hash]*Account, error) {
+	return nil, nil
+}
+
+func (dl *diskLayer) Verified() bool {
+	return true
+}
+func (dl *diskLayer) WaitAndGetVerifyRes() bool {
+	return true
+}

@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"io"
 	"math/big"
+	"sync"
 	"time"
 
 	"jumbochain.org/common"
@@ -209,7 +210,7 @@ func (s *stateObject) GetCommittedState(db Database, key common.Hash) common.Has
 		//   1) resurrect happened, and new slot values were set -- those should
 		//      have been handles via pendingStorage above.
 		//   2) we don't have new values, and can deliver empty response back
-		if _, destructed := s.db.snapDestructs[s.addrHash]; destructed {
+		if _, destructed := s.db.snapDestructs[s.address]; destructed {
 			return common.Hash{}
 		}
 		start := time.Now()
@@ -343,9 +344,9 @@ func (s *stateObject) updateTrie(db Database) Trie {
 		if s.db.snap != nil {
 			if storage == nil {
 				// Retrieve the old storage map, if available, create a new one otherwise
-				if storage = s.db.snapStorage[s.addrHash]; storage == nil {
-					storage = make(map[common.Hash][]byte)
-					s.db.snapStorage[s.addrHash] = storage
+				if storage = s.db.snapStorage[s.address]; storage == nil {
+					storage = make(map[string][]byte, len(dirtyStorage))
+					s.db.snapStorage[s.address] = storage
 				}
 			}
 			storage[crypto.HashData(hasher, key[:])] = v // v will be nil if it's deleted
@@ -532,4 +533,40 @@ func (s *stateObject) Nonce() uint64 {
 // interface. Interfaces are awesome.
 func (s *stateObject) Value() *big.Int {
 	panic("Value on stateObject should never be called")
+}
+
+type StateObject struct {
+	address       common.Address
+	addrHash      common.Hash // hash of ethereum address of the account
+	data          types.StateAccount
+	db            *StateDB
+	rootCorrected bool // To indicate whether the root has been corrected in pipecommit mode
+
+	// DB error.
+	// State objects are used by the consensus core and VM which are
+	// unable to deal with database-level errors. Any error that occurs
+	// during a database read is memoized here and will eventually be returned
+	// by StateDB.Commit.
+	dbErr error
+
+	// Write caches.
+	trie Trie // storage trie, which becomes non-nil on first access
+	code Code // contract bytecode, which gets set when code is loaded
+
+	sharedOriginStorage *sync.Map // Point to the entry of the stateObject in sharedPool
+	originStorage       Storage   // Storage cache of original entries to dedup rewrites, reset for every transaction
+
+	pendingStorage Storage // Storage entries that need to be flushed to disk, at the end of an entire block
+	dirtyStorage   Storage // Storage entries that have been modified in the current transaction execution
+	fakeStorage    Storage // Fake storage which constructed by caller for debugging purpose.
+
+	// Cache flags.
+	// When an object is marked suicided it will be delete from the trie
+	// during the "update" phase of the state transition.
+	dirtyCode bool // true if the code was updated
+	suicided  bool
+	deleted   bool
+
+	//encode
+	encodeData []byte
 }

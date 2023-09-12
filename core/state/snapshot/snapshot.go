@@ -848,3 +848,8 @@ func (t *Tree) DiskRoot() common.Hash {
 
 	return t.diskRoot()
 }
+
+// Layers returns the number of layers
+func (t *Tree) Layers() int {
+	return len(t.layers)
+}

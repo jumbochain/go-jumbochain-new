@@ -138,3 +138,16 @@ type PoW interface {
 	// Hashrate returns the current mining hashrate of a PoW consensus engine.
 	Hashrate() float64
 }
+type PoSA interface {
+	Engine
+
+	IsSystemTransaction(tx *types.Transaction, header *types.Header) (bool, error)
+	IsSystemContract(to *common.Address) bool
+	EnoughDistance(chain ChainReader, header *types.Header) bool
+	IsLocalBlock(header *types.Header) bool
+	AllowLightProcess(chain ChainReader, currentHeader *types.Header) bool
+	GetJustifiedNumberAndHash(chain ChainHeaderReader, header *types.Header) (uint64, common.Hash, error)
+	GetFinalizedHeader(chain ChainHeaderReader, header *types.Header) *types.Header
+	VerifyVote(chain ChainHeaderReader, vote *types.VoteEnvelope) error
+	IsActiveValidatorAt(chain ChainHeaderReader, header *types.Header) bool
+}
