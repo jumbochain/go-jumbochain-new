@@ -64,6 +64,13 @@ func NewSecure(root common.Hash, db *Database) (*SecureTrie, error) {
 	return &SecureTrie{trie: *trie}, nil
 }
 
+func (t *SecureTrie) ResetCopy() *SecureTrie {
+	cpy := *t
+	cpy.secKeyCacheOwner = nil
+	cpy.secKeyCache = nil
+	return &cpy
+}
+
 // Get returns the value for key stored in the trie.
 // The value bytes must not be modified by the caller.
 func (t *SecureTrie) Get(key []byte) []byte {

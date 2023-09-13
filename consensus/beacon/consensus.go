@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"time"
 
 	"jumbochain.org/common"
 	"jumbochain.org/consensus"
@@ -73,6 +74,10 @@ func (beacon *Beacon) Author(header *types.Header) (common.Address, error) {
 		return beacon.ethone.Author(header)
 	}
 	return header.Coinbase, nil
+}
+
+func (beacon *Beacon) Delay(_ consensus.ChainReader, _ *types.Header, _ *time.Duration) *time.Duration {
+	return nil
 }
 
 // VerifyHeader checks whether a header conforms to the consensus rules of the

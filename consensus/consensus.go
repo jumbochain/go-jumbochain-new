@@ -19,6 +19,7 @@ package consensus
 
 import (
 	"math/big"
+	"time"
 
 	"jumbochain.org/common"
 	"jumbochain.org/core/state"
@@ -129,6 +130,9 @@ type Engine interface {
 
 	// Close terminates any background threads maintained by the consensus engine.
 	Close() error
+
+	// Delay returns the max duration the miner can commit txs
+	Delay(chain ChainReader, header *types.Header, leftOver *time.Duration) *time.Duration
 }
 
 // PoW is a consensus engine based on proof-of-work.

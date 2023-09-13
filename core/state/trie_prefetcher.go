@@ -18,6 +18,7 @@ package state
 
 import (
 	"sync"
+	"sync/atomic"
 
 	"jumbochain.org/common"
 	"jumbochain.org/log"
@@ -29,16 +30,31 @@ var (
 	triePrefetchMetricsPrefix = "trie/prefetch/"
 )
 
+const (
+	abortChanSize                 = 64
+	concurrentChanSize            = 10
+	parallelTriePrefetchThreshold = 10
+	parallelTriePrefetchCapacity  = 20
+)
+
 // triePrefetcher is an active prefetcher, which receives accounts or storage
 // items and does trie-loading of them. The goal is to get as much useful content
 // into the caches as possible.
 //
 // Note, the prefetcher's API is not thread safe.
 type triePrefetcher struct {
-	db       Database                    // Database to fetch trie nodes through
-	root     common.Hash                 // Root hash of theaccount trie for metrics
-	fetches  map[common.Hash]Trie        // Partially or fully fetcher tries
-	fetchers map[common.Hash]*subfetcher // Subfetchers for each trie
+	db         Database                    // Database to fetch trie nodes through
+	root       common.Hash                 // Root hash of theaccount trie for metrics
+	rootParent common.Hash                 //Root has of the account trie from block before the prvious one, designed for pipecommit mode
+	fetches    map[common.Hash]Trie        // Partially or fully fetcher tries
+	fetchers   map[common.Hash]*subfetcher // Subfetchers for each trie
+
+	abortChan         chan *subfetcher // to abort a single subfetcher and its children
+	closed            int32
+	closeMainChan     chan struct{} // it is to inform the mainLoop
+	closeMainDoneChan chan struct{}
+	fetchersMutex     sync.RWMutex
+	prefetchChan      chan *prefetchMsg // no need to wait for return
 
 	deliveryMissMeter metrics.Meter
 	accountLoadMeter  metrics.Meter
@@ -49,15 +65,26 @@ type triePrefetcher struct {
 	storageDupMeter   metrics.Meter
 	storageSkipMeter  metrics.Meter
 	storageWasteMeter metrics.Meter
+
+	accountStaleLoadMeter  metrics.Meter
+	accountStaleDupMeter   metrics.Meter
+	accountStaleSkipMeter  metrics.Meter
+	accountStaleWasteMeter metrics.Meter
 }
 
 // newTriePrefetcher
-func newTriePrefetcher(db Database, root common.Hash, namespace string) *triePrefetcher {
+func newTriePrefetcher(db Database, root, rootParent common.Hash, namespace string) *triePrefetcher {
 	prefix := triePrefetchMetricsPrefix + namespace
 	p := &triePrefetcher{
-		db:       db,
-		root:     root,
-		fetchers: make(map[common.Hash]*subfetcher), // Active prefetchers use the fetchers map
+		db:         db,
+		root:       root,
+		rootParent: rootParent,
+		fetchers:   make(map[common.Hash]*subfetcher), // Active prefetchers use the fetchers map
+		abortChan:  make(chan *subfetcher, abortChanSize),
+
+		closeMainChan:     make(chan struct{}),
+		closeMainDoneChan: make(chan struct{}),
+		prefetchChan:      make(chan *prefetchMsg, concurrentChanSize),
 
 		deliveryMissMeter: metrics.GetOrRegisterMeter(prefix+"/deliverymiss", nil),
 		accountLoadMeter:  metrics.GetOrRegisterMeter(prefix+"/account/load", nil),
@@ -68,8 +95,145 @@ func newTriePrefetcher(db Database, root common.Hash, namespace string) *triePre
 		storageDupMeter:   metrics.GetOrRegisterMeter(prefix+"/storage/dup", nil),
 		storageSkipMeter:  metrics.GetOrRegisterMeter(prefix+"/storage/skip", nil),
 		storageWasteMeter: metrics.GetOrRegisterMeter(prefix+"/storage/waste", nil),
+
+		accountStaleLoadMeter:  metrics.GetOrRegisterMeter(prefix+"/accountst/load", nil),
+		accountStaleDupMeter:   metrics.GetOrRegisterMeter(prefix+"/accountst/dup", nil),
+		accountStaleSkipMeter:  metrics.GetOrRegisterMeter(prefix+"/accountst/skip", nil),
+		accountStaleWasteMeter: metrics.GetOrRegisterMeter(prefix+"/accountst/waste", nil),
 	}
+	go p.mainLoop()
 	return p
+}
+
+// the subfetcher's lifecycle will only be updated in this loop,
+// include: subfetcher's creation & abort, child subfetcher's creation & abort.
+// since the mainLoop will handle all the requests, each message handle should be lightweight
+func (p *triePrefetcher) mainLoop() {
+	for {
+		select {
+		case pMsg := <-p.prefetchChan:
+			fetcher := p.fetchers[pMsg.root]
+			if fetcher == nil {
+				fetcher = newSubfetcher(p.db, pMsg.root, pMsg.accountHash)
+				p.fetchersMutex.Lock()
+				p.fetchers[pMsg.root] = fetcher
+				p.fetchersMutex.Unlock()
+			}
+			select {
+			case <-fetcher.stop:
+			default:
+				fetcher.schedule(pMsg.keys)
+				// no need to run parallel trie prefetch if threshold is not reached.
+				if atomic.LoadUint32(&fetcher.pendingSize) > parallelTriePrefetchThreshold {
+					fetcher.scheduleParallel(pMsg.keys)
+				}
+			}
+
+		case fetcher := <-p.abortChan:
+			fetcher.abort()
+			for _, child := range fetcher.paraChildren {
+				child.abort()
+			}
+
+		case <-p.closeMainChan:
+			for _, fetcher := range p.fetchers {
+				fetcher.abort() // safe to do multiple times
+				for _, child := range fetcher.paraChildren {
+					child.abort()
+				}
+			}
+			// make sure all subfetchers and child subfetchers are stopped
+			for _, fetcher := range p.fetchers {
+				<-fetcher.term
+				for _, child := range fetcher.paraChildren {
+					<-child.term
+				}
+
+				if metrics.EnabledExpensive {
+					switch fetcher.root {
+					case p.root:
+						p.accountLoadMeter.Mark(int64(len(fetcher.seen)))
+						p.accountDupMeter.Mark(int64(fetcher.dups))
+						p.accountSkipMeter.Mark(int64(len(fetcher.tasks)))
+						fetcher.lock.Lock()
+						for _, key := range fetcher.used {
+							delete(fetcher.seen, string(key))
+						}
+						fetcher.lock.Unlock()
+						p.accountWasteMeter.Mark(int64(len(fetcher.seen)))
+
+					case p.rootParent:
+						p.accountStaleLoadMeter.Mark(int64(len(fetcher.seen)))
+						p.accountStaleDupMeter.Mark(int64(fetcher.dups))
+						p.accountStaleSkipMeter.Mark(int64(len(fetcher.tasks)))
+						fetcher.lock.Lock()
+						for _, key := range fetcher.used {
+							delete(fetcher.seen, string(key))
+						}
+						fetcher.lock.Unlock()
+						p.accountStaleWasteMeter.Mark(int64(len(fetcher.seen)))
+
+					default:
+						p.storageLoadMeter.Mark(int64(len(fetcher.seen)))
+						p.storageDupMeter.Mark(int64(fetcher.dups))
+						p.storageSkipMeter.Mark(int64(len(fetcher.tasks)))
+
+						fetcher.lock.Lock()
+						for _, key := range fetcher.used {
+							delete(fetcher.seen, string(key))
+						}
+						fetcher.lock.Unlock()
+						p.storageWasteMeter.Mark(int64(len(fetcher.seen)))
+
+					}
+				}
+			}
+			close(p.closeMainDoneChan)
+			p.fetchersMutex.Lock()
+			p.fetchers = nil
+			p.fetchersMutex.Unlock()
+			return
+		}
+	}
+}
+
+func (sf *subfetcher) scheduleParallel(keys [][]byte) {
+	var keyIndex uint32 = 0
+	childrenNum := len(sf.paraChildren)
+	if childrenNum > 0 {
+		// To feed the children first, if they are hungry.
+		// A child can handle keys with capacity of parallelTriePrefetchCapacity.
+		childIndex := len(keys) % childrenNum // randomly select the start child to avoid always feed the first one
+		for i := 0; i < childrenNum; i++ {
+			child := sf.paraChildren[childIndex]
+			childIndex = (childIndex + 1) % childrenNum
+			if atomic.LoadUint32(&child.pendingSize) >= parallelTriePrefetchCapacity {
+				// the child is already full, skip it
+				continue
+			}
+			feedNum := parallelTriePrefetchCapacity - atomic.LoadUint32(&child.pendingSize)
+			if keyIndex+feedNum >= uint32(len(keys)) {
+				// the new arrived keys are all consumed by children.
+				child.schedule(keys[keyIndex:])
+				return
+			}
+			child.schedule(keys[keyIndex : keyIndex+feedNum])
+			keyIndex += feedNum
+		}
+	}
+	// Children did not consume all the keys, to create new subfetch to handle left keys.
+	keysLeft := keys[keyIndex:]
+	keysLeftSize := len(keysLeft)
+	for i := 0; i*parallelTriePrefetchCapacity < keysLeftSize; i++ {
+		child := newSubfetcher(sf.db, sf.root, sf.accountHash)
+		sf.paraChildren = append(sf.paraChildren, child)
+		endIndex := (i + 1) * parallelTriePrefetchCapacity
+		if endIndex >= keysLeftSize {
+			child.schedule(keysLeft[i*parallelTriePrefetchCapacity:])
+			return
+		}
+		child.schedule(keysLeft[i*parallelTriePrefetchCapacity : endIndex])
+	}
 }
 
 // close iterates over all the subfetchers, aborts any that were left spinning
@@ -138,19 +302,22 @@ func (p *triePrefetcher) copy() *triePrefetcher {
 	return copy
 }
 
+type prefetchMsg struct {
+	root        common.Hash
+	accountHash common.Hash
+	keys        [][]byte
+}
+
 // prefetch schedules a batch of trie items to prefetch.
-func (p *triePrefetcher) prefetch(root common.Hash, keys [][]byte) {
+func (p *triePrefetcher) prefetch(root common.Hash, keys [][]byte, accountHash common.Hash) {
 	// If the prefetcher is an inactive one, bail out
 	if p.fetches != nil {
 		return
 	}
-	// Active fetcher, schedule the retrievals
-	fetcher := p.fetchers[root]
-	if fetcher == nil {
-		fetcher = newSubfetcher(p.db, root)
-		p.fetchers[root] = fetcher
+	select {
+	case <-p.closeMainChan: // skip closed trie prefetcher
+	case p.prefetchChan <- &prefetchMsg{root, accountHash, keys}:
 	}
-	fetcher.schedule(keys)
 }
 
 // trie returns the trie matching the root hash, or nil if the prefetcher doesn't
@@ -211,19 +378,25 @@ type subfetcher struct {
 	seen map[string]struct{} // Tracks the entries already loaded
 	dups int                 // Number of duplicate preload tasks
 	used [][]byte            // Tracks the entries used in the end
+
+	accountHash common.Hash
+
+	pendingSize  uint32
+	paraChildren []*subfetcher // Parallel trie prefetch for address of massive change
 }
 
 // newSubfetcher creates a goroutine to prefetch state items belonging to a
 // particular root hash.
-func newSubfetcher(db Database, root common.Hash) *subfetcher {
+func newSubfetcher(db Database, root common.Hash, accountHash common.Hash) *subfetcher {
 	sf := &subfetcher{
-		db:   db,
-		root: root,
-		wake: make(chan struct{}, 1),
-		stop: make(chan struct{}),
-		term: make(chan struct{}),
-		copy: make(chan chan Trie),
-		seen: make(map[string]struct{}),
+		db:          db,
+		root:        root,
+		wake:        make(chan struct{}, 1),
+		stop:        make(chan struct{}),
+		term:        make(chan struct{}),
+		copy:        make(chan chan Trie),
+		seen:        make(map[string]struct{}),
+		accountHash: accountHash,
 	}
 	go sf.loop()
 	return sf

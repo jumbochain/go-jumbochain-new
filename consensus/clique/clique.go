@@ -218,6 +218,10 @@ func (c *Clique) VerifyHeader(chain consensus.ChainHeaderReader, header *types.H
 	return c.verifyHeader(chain, header, nil)
 }
 
+func (c *Clique) Delay(chain consensus.ChainReader, header *types.Header, leftOver *time.Duration) *time.Duration {
+	return nil
+}
+
 // VerifyHeaders is similar to VerifyHeader, but verifies a batch of headers. The
 // method returns a quit channel to abort the operations and a results channel to
 // retrieve the async verifications (the order is that of the input slice).

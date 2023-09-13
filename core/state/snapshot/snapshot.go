@@ -26,6 +26,7 @@ import (
 
 	"jumbochain.org/common"
 	"jumbochain.org/core/rawdb"
+	"jumbochain.org/crypto"
 	"jumbochain.org/ethdb"
 	"jumbochain.org/log"
 	"jumbochain.org/metrics"
@@ -103,6 +104,16 @@ type Snapshot interface {
 
 	// WaitAndGetVerifyRes will wait until the snapshot been verified and return verification result
 	WaitAndGetVerifyRes() bool
+
+	// Verified returns whether the snapshot is verified
+	Verified() bool
+
+	// MarkValid stores the verification result
+	MarkValid()
+
+	// CorrectAccounts updates account data for storing the correct data during pipecommit
+	CorrectAccounts(map[common.Hash][]byte)
+
 	// Account directly retrieves the account associated with a particular hash in
 	// the snapshot slim data format.
 	Account(hash common.Hash) (*Account, error)
@@ -118,6 +129,10 @@ type Snapshot interface {
 	// Storage directly retrieves the storage data associated with a particular hash,
 	// within a particular account.
 	Storage(accountHash, storageHash common.Hash) ([]byte, error)
+
+	// Parent returns the subsequent layer of a snapshot, or nil if the base was
+	// reached.
+	Parent() snapshot
 }
 
 // snapshot is the internal version of the snapshot data layer that supports some
@@ -136,7 +151,7 @@ type snapshot interface {
 	// the specified data items.
 	//
 	// Note, the maps are retained by the method to avoid copying everything.
-	Update(blockRoot common.Hash, destructs map[common.Hash]struct{}, accounts map[common.Hash][]byte, storage map[common.Hash]map[common.Hash][]byte) *diffLayer
+	Update(blockRoot common.Hash, destructs map[common.Hash]struct{}, accounts map[common.Hash][]byte, storage map[common.Hash]map[common.Hash][]byte, verified chan struct{}) *diffLayer
 
 	// Journal commits an entire diff hierarchy to disk into a single journal entry.
 	// This is meant to be used during shutdown to persist the snapshot without
@@ -164,11 +179,12 @@ type snapshot interface {
 // storage data to avoid expensive multi-level trie lookups; and to allow sorted,
 // cheap iteration of the account/storage tries for sync aid.
 type Tree struct {
-	diskdb ethdb.KeyValueStore      // Persistent database to store the snapshot
-	triedb *trie.Database           // In-memory cache to access the trie through
-	cache  int                      // Megabytes permitted to use for read caches
-	layers map[common.Hash]snapshot // Collection of all known layers
-	lock   sync.RWMutex
+	diskdb   ethdb.KeyValueStore      // Persistent database to store the snapshot
+	triedb   *trie.Database           // In-memory cache to access the trie through
+	cache    int                      // Megabytes permitted to use for read caches
+	layers   map[common.Hash]snapshot // Collection of all known layers
+	lock     sync.RWMutex
+	capLimit int
 
 	// Test hooks
 	onFlatten func() // Hook invoked when the bottom most diff layers are flattened
@@ -334,9 +350,15 @@ func (t *Tree) Snapshots(root common.Hash, limits int, nodisk bool) []Snapshot {
 	return ret
 }
 
+func (t *Tree) Update(blockRoot common.Hash, parentRoot common.Hash, destructs map[common.Address]struct{}, accounts map[common.Address][]byte, storage map[common.Address]map[string][]byte, verified chan struct{}) error {
+	hashDestructs, hashAccounts, hashStorage := transformSnapData(destructs, accounts, storage)
+	return t.update(blockRoot, parentRoot, hashDestructs, hashAccounts, hashStorage, verified)
+}
+
 // Update adds a new snapshot into the tree, if that can be linked to an existing
 // old parent. It is disallowed to insert a disk layer (the origin of all).
-func (t *Tree) Update(blockRoot common.Hash, parentRoot common.Hash, destructs map[common.Hash]struct{}, accounts map[common.Hash][]byte, storage map[common.Hash]map[common.Hash][]byte) error {
+// func (t *Tree) update(blockRoot common.Hash, parentRoot common.Hash, destructs map[common.Hash]struct{}, accounts map[common.Hash][]byte, storage map[common.Hash]map[common.Hash][]byte, verified chan struct{}) error {
+func (t *Tree) update(blockRoot common.Hash, parentRoot common.Hash, destructs map[common.Hash]struct{}, accounts map[common.Hash][]byte, storage map[common.Hash]map[common.Hash][]byte, verified chan struct{}) error {
 	// Reject noop updates to avoid self-loops in the snapshot tree. This is a
 	// special case that can only happen for Clique networks where empty blocks
 	// don't modify the state (0 block subsidy).
@@ -351,14 +373,19 @@ func (t *Tree) Update(blockRoot common.Hash, parentRoot common.Hash, destructs m
 	if parent == nil {
 		return fmt.Errorf("parent [%#x] snapshot missing", parentRoot)
 	}
-	snap := parent.(snapshot).Update(blockRoot, destructs, accounts, storage)
+	snap := parent.(snapshot).Update(blockRoot, destructs, accounts, storage, verified)
 
 	// Save the new snapshot for later
 	t.lock.Lock()
 	defer t.lock.Unlock()
 
 	t.layers[snap.root] = snap
+	log.Debug("Snapshot updated", "blockRoot", blockRoot)
 	return nil
+}
+
+func (t *Tree) CapLimit() int {
+	return t.capLimit
 }
 
 // Cap traverses downwards the snapshot tree from a head block hash until the
@@ -852,4 +879,28 @@ func (t *Tree) DiskRoot() common.Hash {
 // Layers returns the number of layers
 func (t *Tree) Layers() int {
 	return len(t.layers)
+}
+
+// TODO we can further improve it when the set is very large
+func transformSnapData(destructs map[common.Address]struct{}, accounts map[common.Address][]byte,
+	storage map[common.Address]map[string][]byte) (map[common.Hash]struct{}, map[common.Hash][]byte,
+	map[common.Hash]map[common.Hash][]byte) {
+	hasher := crypto.NewKeccakState()
+	hashDestructs := make(map[common.Hash]struct{}, len(destructs))
+	hashAccounts := make(map[common.Hash][]byte, len(accounts))
+	hashStorages := make(map[common.Hash]map[common.Hash][]byte, len(storage))
+	for addr := range destructs {
+		hashDestructs[crypto.Keccak256Hash(addr[:])] = struct{}{}
+	}
+	for addr, account := range accounts {
+		hashAccounts[crypto.Keccak256Hash(addr[:])] = account
+	}
+	for addr, accountStore := range storage {
+		hashStorage := make(map[common.Hash][]byte, len(accountStore))
+		for k, v := range accountStore {
+			hashStorage[crypto.HashData(hasher, []byte(k))] = v
+		}
+		hashStorages[crypto.Keccak256Hash(addr[:])] = hashStorage
+	}
+	return hashDestructs, hashAccounts, hashStorages
 }

@@ -18,11 +18,24 @@ package vm
 
 import (
 	"hash"
+	"sync"
 
 	"jumbochain.org/common"
 	"jumbochain.org/common/math"
 	"jumbochain.org/log"
 )
+
+var EVMInterpreterPool = sync.Pool{
+	New: func() interface{} {
+		return &EVMInterpreter{}
+	},
+}
+
+var EvmPool = sync.Pool{
+	New: func() interface{} {
+		return &EVM{}
+	},
+}
 
 // Config are the configuration options for the Interpreter
 type Config struct {

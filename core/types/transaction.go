@@ -87,6 +87,21 @@ type TxData interface {
 	setSignatureValues(chainID, v, r, s *big.Int)
 }
 
+// Copy copys a new TransactionsPriceAndNonce with the same *transaction
+func (t *TransactionsByPriceAndNonce) Copy() *TransactionsByPriceAndNonce {
+	heads := make([]*TxWithMinerFee, len(t.heads))
+	copy(heads, t.heads)
+	txs := make(map[common.Address]Transactions, len(t.txs))
+	for acc, txsTmp := range t.txs {
+		txs[acc] = txsTmp
+	}
+	return &TransactionsByPriceAndNonce{
+		heads:  heads,
+		txs:    txs,
+		signer: t.signer,
+	}
+}
+
 // EncodeRLP implements rlp.Encoder
 func (tx *Transaction) EncodeRLP(w io.Writer) error {
 	if tx.Type() == LegacyTxType {
@@ -547,6 +562,57 @@ func NewTransactionsByPriceAndNonce(signer Signer, txs map[common.Address]Transa
 	}
 }
 
+// Pop removes the best transaction, *not* replacing it with the next one from
+// the same account. This should be used when a transaction cannot be executed
+// and hence all subsequent ones should be discarded from the same account.
+func (t *TransactionsByPriceAndNonce) Pop() {
+	heap.Pop(&t.heads)
+}
+
+func (t *TransactionsByPriceAndNonce) CurrentSize() int {
+	return len(t.heads)
+}
+
+// Forward moves current transaction to be the one which is one index after tx
+func (t *TransactionsByPriceAndNonce) Forward(tx *Transaction) {
+	if tx == nil {
+		if len(t.heads) > 0 {
+			t.heads = t.heads[0:0]
+		}
+		return
+	}
+	//check whether target tx exists in t.heads
+	for _, head := range t.heads {
+		if tx == head.tx {
+			//shift t to the position one after tx
+			txTmp := t.Peek()
+			for txTmp != tx {
+				t.Shift()
+				txTmp = t.Peek()
+			}
+			t.Shift()
+			return
+		}
+	}
+	//get the sender address of tx
+	acc, _ := Sender(t.signer, tx)
+	//check whether target tx exists in t.txs
+	if txs, ok := t.txs[acc]; ok {
+		for _, txTmp := range txs {
+			//found the same pointer in t.txs as tx and then shift t to the position one after tx
+			if txTmp == tx {
+				txTmp = t.Peek()
+				for txTmp != tx {
+					t.Shift()
+					txTmp = t.Peek()
+				}
+				t.Shift()
+				return
+			}
+		}
+	}
+}
+
 // Peek returns the next transaction by price.
 func (t *TransactionsByPriceAndNonce) Peek() *Transaction {
 	if len(t.heads) == 0 {
@@ -568,12 +634,12 @@ func (t *TransactionsByPriceAndNonce) Shift() {
 	heap.Pop(&t.heads)
 }
 
-// Pop removes the best transaction, *not* replacing it with the next one from
-// the same account. This should be used when a transaction cannot be executed
-// and hence all subsequent ones should be discarded from the same account.
-func (t *TransactionsByPriceAndNonce) Pop() {
-	heap.Pop(&t.heads)
-}
+// // Pop removes the best transaction, *not* replacing it with the next one from
+// // the same account. This should be used when a transaction cannot be executed
+// // and hence all subsequent ones should be discarded from the same account.
+// func (t *TransactionsByPriceAndNonce) Pop() {
+// 	heap.Pop(&t.heads)
+// }
 
 // Message is a fully derived transaction and implements core.Message
 //
@@ -608,9 +674,9 @@ func NewMessage(from common.Address, to *common.Address, nonce uint64, amount *b
 	}
 }
 
-func (t *TransactionsByPriceAndNonce) CurrentSize() int {
-	return len(t.heads)
-}
+// func (t *TransactionsByPriceAndNonce) CurrentSize() int {
+// 	return len(t.heads)
+// }
 
 // AsMessage returns the transaction as a core.Message.
 func (tx *Transaction) AsMessage(s Signer, baseFee *big.Int) (Message, error) {
@@ -632,6 +698,15 @@ func (tx *Transaction) AsMessage(s Signer, baseFee *big.Int) (Message, error) {
 	}
 	var err error
 	msg.from, err = Sender(s, tx)
+	return msg, err
+}
+
+// AsMessageNoNonceCheck returns the transaction with checkNonce field set to be false.
+func (tx *Transaction) AsMessageNoNonceCheck(s Signer) (Message, error) {
+	msg, err := tx.AsMessage(s, nil)
+	if err == nil {
+		msg.isFake = true
+	}
 	return msg, err
 }
 

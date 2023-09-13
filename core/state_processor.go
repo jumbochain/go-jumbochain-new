@@ -28,7 +28,6 @@ import (
 	"jumbochain.org/common"
 	"jumbochain.org/common/gopool"
 	"jumbochain.org/consensus"
-	"jumbochain.org/consensus/misc"
 	"jumbochain.org/core/rawdb"
 	"jumbochain.org/core/state"
 	"jumbochain.org/core/state/snapshot"
@@ -389,9 +388,9 @@ func (p *StateProcessor) Process(block *types.Block, statedb *state.StateDB, cfg
 
 	var receipts = make([]*types.Receipt, 0)
 	// Mutate the block and state according to any hard-fork specs
-	if p.config.DAOForkSupport && p.config.DAOForkBlock != nil && p.config.DAOForkBlock.Cmp(block.Number()) == 0 {
-		misc.ApplyDAOHardFork(statedb)
-	}
+	// if p.config.DAOForkSupport && p.config.DAOForkBlock != nil && p.config.DAOForkBlock.Cmp(block.Number()) == 0 {
+	// 	misc.ApplyDAOHardFork(statedb)
+	// }
 	// Handle upgrade build-in system contract code
 	systemcontracts.UpgradeBuildInSystemContract(p.config, block.Number(), statedb)
 
@@ -464,11 +463,11 @@ func applyTransaction(msg types.Message, config *params.ChainConfig, bc ChainCon
 
 	// Update the state with pending changes.
 	var root []byte
-	if config.IsByzantium(blockNumber) {
-		statedb.Finalise(true)
-	} else {
-		root = statedb.IntermediateRoot(config.IsEIP158(blockNumber)).Bytes()
-	}
+	// if config.IsByzantium(blockNumber) {
+	// 	statedb.Finalise(true)
+	// } else {
+	root = statedb.IntermediateRoot(false).Bytes()
+	// }
 	*usedGas += result.UsedGas
 
 	// Create a new receipt for the transaction, storing the intermediate root and gas used
