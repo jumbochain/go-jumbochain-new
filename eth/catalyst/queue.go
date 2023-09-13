@@ -78,10 +78,10 @@ func (req *payload) resolve() *beacon.ExecutableDataV1 {
 
 // payloadQueueItem represents an id->payload tuple to store until it's retrieved
 // or evicted.
-type payloadQueueItem struct {
-	id   beacon.PayloadID
-	data *payload
-}
+// type payloadQueueItem struct {
+// 	id   beacon.PayloadID
+// 	data *payload
+// }
 
 // payloadQueue tracks the latest handful of constructed payloads to be retrieved
 // by the beacon chain if block production is requested.
@@ -98,16 +98,33 @@ func newPayloadQueue() *payloadQueue {
 	}
 }
 
+// // put inserts a new payload into the queue at the given id.
+// func (q *payloadQueue) put(id beacon.PayloadID, data *payload) {
+// 	q.lock.Lock()
+// 	defer q.lock.Unlock()
+
+//		copy(q.payloads[1:], q.payloads)
+//		q.payloads[0] = &payloadQueueItem{
+//			id:   id,
+//			data: data,
+//		}
+//	}
+//
 // put inserts a new payload into the queue at the given id.
-func (q *payloadQueue) put(id beacon.PayloadID, data *payload) {
+func (q *payloadQueue) put(id beacon.PayloadID, data *beacon.ExecutableDataV1) {
 	q.lock.Lock()
 	defer q.lock.Unlock()
 
 	copy(q.payloads[1:], q.payloads)
 	q.payloads[0] = &payloadQueueItem{
-		id:   id,
-		data: data,
+		id:      id,
+		payload: data,
 	}
+}
+
+type payloadQueueItem struct {
+	id      beacon.PayloadID
+	payload *beacon.ExecutableDataV1
 }
 
 // get retrieves a previously stored payload item or nil if it does not exist.
@@ -120,7 +137,7 @@ func (q *payloadQueue) get(id beacon.PayloadID) *beacon.ExecutableDataV1 {
 			return nil // no more items
 		}
 		if item.id == id {
-			return item.data.resolve()
+			return item.payload
 		}
 	}
 	return nil

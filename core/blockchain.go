@@ -518,6 +518,35 @@ func (bc *BlockChain) SetFinalized(block *types.Block) {
 	headFinalizedBlockGauge.Update(int64(block.NumberU64()))
 }
 
+// SetChainHead rewinds the chain to set the new head block as the specified
+// block. It's possible that after the reorg the relevant state of head
+// is missing. It can be fixed by inserting a new block which triggers
+// the re-execution.
+func (bc *BlockChain) SetChainHead(newBlock *types.Block) error {
+	if !bc.chainmu.TryLock() {
+		return errChainStopped
+	}
+	defer bc.chainmu.Unlock()
+
+	// Run the reorg if necessary and set the given block as new head.
+	if newBlock.ParentHash() != bc.CurrentBlock().Hash() {
+		if err := bc.reorg(bc.CurrentBlock(), newBlock); err != nil {
+			return err
+		}
+	}
+	bc.writeHeadBlock(newBlock)
+
+	// Emit events
+	logs := bc.collectLogs(newBlock.Hash(), false)
+	bc.chainFeed.Send(ChainEvent{Block: newBlock, Hash: newBlock.Hash(), Logs: logs})
+	if len(logs) > 0 {
+		bc.logsFeed.Send(logs)
+	}
+	bc.chainHeadFeed.Send(ChainHeadEvent{Block: newBlock})
+	log.Info("Set the chain head", "number", newBlock.Number(), "hash", newBlock.Hash())
+	return nil
+}
+
 // setHeadBeyondRoot rewinds the local chain to a new head with the extra condition
 // that the rewind must pass the specified state root. This method is meant to be
 // used when rewinding with snapshots enabled to ensure that we go back further than

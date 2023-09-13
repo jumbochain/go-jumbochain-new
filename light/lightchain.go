@@ -613,3 +613,20 @@ func (lc *LightChain) DisableCheckFreq() {
 func (lc *LightChain) EnableCheckFreq() {
 	atomic.StoreInt32(&lc.disableCheckFreq, 0)
 }
+func (lc *LightChain) SetChainHead(header *types.Header) error {
+	lc.chainmu.Lock()
+	defer lc.chainmu.Unlock()
+
+	lc.wg.Add(1)
+	defer lc.wg.Done()
+
+	if err := lc.hc.Reorg([]*types.Header{header}); err != nil {
+		return err
+	}
+	// Emit events
+	block := types.NewBlockWithHeader(header)
+	lc.chainFeed.Send(core.ChainEvent{Block: block, Hash: block.Hash()})
+	lc.chainHeadFeed.Send(core.ChainHeadEvent{Block: block})
+	log.Info("Set the chain head", "number", block.Number(), "hash", block.Hash())
+	return nil
+}

@@ -718,7 +718,8 @@ func UpgradeBuildInSystemContract(config *params.ChainConfig, blockNumber *big.I
 		network = defaultNet
 	}
 
-	//logger := log.New("system-contract-upgrade", network)
+	logger := log.New("system-contract-upgrade", network)
+	fmt.Println(logger)
 	// if config.IsOnRamanujan(blockNumber) {
 	// 	applySystemContractUpgrade(ramanujanUpgrade[network], blockNumber, statedb, logger)
 	// }

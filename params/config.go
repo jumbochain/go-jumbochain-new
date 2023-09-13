@@ -257,16 +257,16 @@ var (
 	//
 	// This configuration is intentionally not using keyed fields to force anyone
 	// adding flags to the config to also have to set these fields.
-	AllEthashProtocolChanges = &ChainConfig{big.NewInt(10), nil, nil, &JumboConsensusConfig{Period: 0, Epoch: 30000}}
+	AllEthashProtocolChanges = &ChainConfig{big.NewInt(10), big.NewInt(0), nil, nil, &JumboConsensusConfig{Period: 0, Epoch: 30000}}
 
 	// AllCliqueProtocolChanges contains every protocol change (EIPs) introduced
 	// and accepted by the Ethereum core developers into the Clique consensus.
 	//
 	// This configuration is intentionally not using keyed fields to force anyone
 	// adding flags to the config to also have to set these fields.
-	AllCliqueProtocolChanges = &ChainConfig{big.NewInt(10), nil, &CliqueConfig{Period: 0, Epoch: 30000}, nil}
+	AllCliqueProtocolChanges = &ChainConfig{big.NewInt(10), big.NewInt(0), nil, &CliqueConfig{Period: 0, Epoch: 30000}, nil}
 
-	TestChainConfig = &ChainConfig{big.NewInt(1), new(EthashConfig), nil, nil}
+	TestChainConfig = &ChainConfig{big.NewInt(1), big.NewInt(0), new(EthashConfig), nil, nil}
 	TestRules       = TestChainConfig.Rules(new(big.Int), false)
 )
 
@@ -350,7 +350,7 @@ type ChainConfig struct {
 
 	// // TerminalTotalDifficulty is the amount of total difficulty reached by
 	// // the network that triggers the consensus upgrade.
-	// TerminalTotalDifficulty *big.Int `json:"terminalTotalDifficulty,omitempty"`
+	TerminalTotalDifficulty *big.Int `json:"terminalTotalDifficulty,omitempty"`
 
 	// Various consensus engines
 	Ethash         *EthashConfig         `json:"ethash,omitempty"`

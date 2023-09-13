@@ -84,6 +84,18 @@ type TransitionConfigurationV1 struct {
 	TerminalBlockNumber     hexutil.Uint64 `json:"terminalBlockNumber"`
 }
 
+type ForkChoiceResponse struct {
+	Status    string     `json:"status"`
+	PayloadID *PayloadID `json:"payloadId"`
+}
+type GenericStringResponse struct {
+	Status string `json:"status"`
+}
+type ExecutePayloadResponse struct {
+	Status          string      `json:"status"`
+	LatestValidHash common.Hash `json:"latestValidHash"`
+}
+
 // PayloadID is an identifier of the payload build process
 type PayloadID [8]byte
 
@@ -103,10 +115,10 @@ func (b *PayloadID) UnmarshalText(input []byte) error {
 	return nil
 }
 
-type ForkChoiceResponse struct {
-	PayloadStatus PayloadStatusV1 `json:"payloadStatus"`
-	PayloadID     *PayloadID      `json:"payloadId"`
-}
+// type ForkChoiceResponse struct {
+// 	Status PayloadStatusV1 `json:"payloadStatus"`
+// 	PayloadID     *PayloadID      `json:"payloadId"`
+// }
 
 type ForkchoiceStateV1 struct {
 	HeadBlockHash      common.Hash `json:"headBlockHash"`

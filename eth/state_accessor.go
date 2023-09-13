@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"time"
 
+	"jumbochain.org/common"
 	"jumbochain.org/core"
 	"jumbochain.org/core/state"
 	"jumbochain.org/core/types"
@@ -117,7 +118,7 @@ func (eth *Ethereum) StateAtBlock(block *types.Block, reexec uint64, base *state
 	var (
 		start  = time.Now()
 		logged time.Time
-		// parent common.Hash
+		parent common.Hash
 	)
 	for current.NumberU64() < origin {
 		// Print progress logs if long enough time elapsed
@@ -130,25 +131,28 @@ func (eth *Ethereum) StateAtBlock(block *types.Block, reexec uint64, base *state
 		if current = eth.blockchain.GetBlockByNumber(next); current == nil {
 			return nil, fmt.Errorf("block #%d not found", next)
 		}
-		_, _, _, err := eth.blockchain.Processor().Process(current, statedb, vm.Config{})
+		//_, _, _, err := eth.blockchain.Processor().Process(current, statedb, vm.Config{})
+		statedb, _, _, _, err := eth.blockchain.Processor().Process(current, statedb, vm.Config{})
 		if err != nil {
 			return nil, fmt.Errorf("processing block %d failed: %v", current.NumberU64(), err)
 		}
 		// Finalize the state so any modifications are written to the trie
-		// root, err := statedb.Commit(eth.blockchain.Config().IsEIP158(current.Number()))
-		// if err != nil {
-		// 	return nil, fmt.Errorf("stateAtBlock commit failed, number %d root %v: %w",
-		// 		current.NumberU64(), current.Root().Hex(), err)
-		// }
-		// statedb, err = state.New(root, database, nil)
-		// if err != nil {
-		// 	return nil, fmt.Errorf("state reset after block %d failed: %v", current.NumberU64(), err)
-		// }
-		// database.TrieDB().Reference(root, common.Hash{})
-		// if parent != (common.Hash{}) {
-		// 	database.TrieDB().Dereference(parent)
-		// }
-		// parent = root
+		//statedb.Finalise(eth.blockchain.Config().IsEIP158(current.Number()))
+		statedb.AccountsIntermediateRoot()
+		root, _, err := statedb.Commit(nil)
+		if err != nil {
+			return nil, fmt.Errorf("stateAtBlock commit failed, number %d root %v: %w",
+				current.NumberU64(), current.Root().Hex(), err)
+		}
+		statedb, err = state.New(root, database, nil)
+		if err != nil {
+			return nil, fmt.Errorf("state reset after block %d failed: %v", current.NumberU64(), err)
+		}
+		database.TrieDB().Reference(root, common.Hash{})
+		if parent != (common.Hash{}) {
+			database.TrieDB().Dereference(parent)
+		}
+		parent = root
 	}
 	if report {
 		nodes, imgs := database.TrieDB().Size()
