@@ -456,4 +456,3 @@ func dispatchOutput(ctx *cli.Context, baseDir string, result *ExecutionResult, a
 	}
 	return nil
 }
-
