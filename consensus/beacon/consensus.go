@@ -77,7 +77,14 @@ func (beacon *Beacon) Author(header *types.Header) (common.Address, error) {
 }
 
 func (beacon *Beacon) Delay(_ consensus.ChainReader, _ *types.Header, _ *time.Duration) *time.Duration {
-	return nil
+	fmt.Println("-----------INSIDE BEACON CONSENSUS-----------")
+	// Define a default delay of 2 seconds (as an example)
+	defaultDelay := 2 * time.Second
+	fmt.Println("-----------CALCULATED DEFAULT DELAY", defaultDelay)
+
+	// Here, add logic to calculate a dynamic delay based on the inputs (if necessary)
+
+	return &defaultDelay
 }
 
 // VerifyHeader checks whether a header conforms to the consensus rules of the

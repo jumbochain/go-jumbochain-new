@@ -17,6 +17,7 @@
 package state
 
 import (
+	"fmt"
 	"sync"
 	"sync/atomic"
 
@@ -112,30 +113,37 @@ func (p *triePrefetcher) mainLoop() {
 	for {
 		select {
 		case pMsg := <-p.prefetchChan:
+			fmt.Println("Received a prefetch message")
 			fetcher := p.fetchers[pMsg.root]
 			if fetcher == nil {
 				fetcher = newSubfetcher(p.db, pMsg.root, pMsg.accountHash)
 				p.fetchersMutex.Lock()
 				p.fetchers[pMsg.root] = fetcher
 				p.fetchersMutex.Unlock()
+				fmt.Println("Created a new fetcher")
 			}
 			select {
 			case <-fetcher.stop:
+				fmt.Println("Fetcher is stopped")
 			default:
 				fetcher.schedule(pMsg.keys)
+				fmt.Println("Scheduled keys for fetching")
 				// no need to run parallel trie prefetch if threshold is not reached.
 				if atomic.LoadUint32(&fetcher.pendingSize) > parallelTriePrefetchThreshold {
 					fetcher.scheduleParallel(pMsg.keys)
+					fmt.Println("Scheduled keys for parallel prefetching")
 				}
 			}
 
 		case fetcher := <-p.abortChan:
+			fmt.Println("Received a fetcher on abort channel")
 			fetcher.abort()
 			for _, child := range fetcher.paraChildren {
 				child.abort()
 			}
 
 		case <-p.closeMainChan:
+			fmt.Println("Received signal to close main channel")
 			for _, fetcher := range p.fetchers {
 				fetcher.abort() // safe to do multiple times
 				for _, child := range fetcher.paraChildren {
@@ -192,6 +200,7 @@ func (p *triePrefetcher) mainLoop() {
 			p.fetchersMutex.Lock()
 			p.fetchers = nil
 			p.fetchersMutex.Unlock()
+			fmt.Println("Main loop terminated")
 			return
 		}
 	}

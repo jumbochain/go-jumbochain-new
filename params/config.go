@@ -33,7 +33,7 @@ var (
 	// RinkebyGenesisHash = common.HexToHash("0x6341fd3daf94b748c72ced5a5b26028f2474f5f00d824504e4fa37a75767e177")
 	// GoerliGenesisHash  = common.HexToHash("0xbf7e331f7f7c1dd2e05159666b3bf8bc7a8a3a9eb1d518969eab529dd9b88c1a")
 	// KilnGenesisHash    = common.HexToHash("0x51c7fe41be669f69c45c33a56982cbde405313342d9e2b00d7c91a7b284dd4f8")
-	JumboGenesisHash = common.HexToHash("0x0d21840abff46b96c84b2ac9e10e4f5cdaeb5693cb665db62a2f3b02d2d57b5b")
+	JumboGenesisHash = common.HexToHash("0x65e6c24cc28f97c5dc45c98d3b45427aba48ea1de17d311621a31d0576a464dd")
 )
 
 // TrustedCheckpoints associates each known checkpoint with the genesis hash of
@@ -51,7 +51,7 @@ var CheckpointOracles = map[common.Hash]*CheckpointOracleConfig{
 var (
 	// MainnetChainConfig is the chain parameters to run a node on the main network.
 	MainnetChainConfig = &ChainConfig{
-		ChainID: big.NewInt(10),
+		ChainID: big.NewInt(129),
 		// HomesteadBlock:      big.NewInt(1_150_000),
 		// DAOForkBlock:        big.NewInt(1_920_000),
 		// DAOForkSupport:      true,
@@ -257,7 +257,7 @@ var (
 	//
 	// This configuration is intentionally not using keyed fields to force anyone
 	// adding flags to the config to also have to set these fields.
-	AllEthashProtocolChanges = &ChainConfig{big.NewInt(10), big.NewInt(0), nil, nil, &JumboConsensusConfig{Period: 0, Epoch: 30000}}
+	AllEthashProtocolChanges = &ChainConfig{big.NewInt(129), big.NewInt(0), nil, nil, &JumboConsensusConfig{Period: 15, Epoch: 3000}}
 
 	// AllCliqueProtocolChanges contains every protocol change (EIPs) introduced
 	// and accepted by the Ethereum core developers into the Clique consensus.
@@ -355,7 +355,7 @@ type ChainConfig struct {
 	// Various consensus engines
 	Ethash         *EthashConfig         `json:"ethash,omitempty"`
 	Clique         *CliqueConfig         `json:"clique,omitempty"`
-	JumboConsensus *JumboConsensusConfig `json:"parlia,omitempty" toml:",omitempty"`
+	JumboConsensus *JumboConsensusConfig `json:"jumbo,omitempty" toml:",omitempty"`
 }
 
 // EthashConfig is the consensus engine configs for proof-of-work based sealing.

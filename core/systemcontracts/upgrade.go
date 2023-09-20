@@ -708,14 +708,14 @@ func UpgradeBuildInSystemContract(config *params.ChainConfig, blockNumber *big.I
 	var network string
 	switch GenesisHash {
 	/* Add mainnet genesis hash */
-	case params.JumboGenesisHash:
-		network = mainNet
+	// case params.JumboGenesisHash:
+	// 	network = mainNet
 	// case params.ChapelGenesisHash:
-	// 	network = chapelNet
+	// network = chapelNet
 	// case params.RialtoGenesisHash:
 	// 	network = rialtoNet
 	default:
-		network = defaultNet
+		network = mainNet
 	}
 
 	logger := log.New("system-contract-upgrade", network)

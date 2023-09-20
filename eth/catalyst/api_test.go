@@ -493,8 +493,8 @@ func TestExchangeTransitionConfig(t *testing.T) {
 	// invalid terminal block hash
 	config = beacon.TransitionConfigurationV1{
 		// TerminalTotalDifficulty: (*hexutil.Big)(genesis.Config.TerminalTotalDifficulty),
-		TerminalBlockHash:       common.Hash{1},
-		TerminalBlockNumber:     0,
+		TerminalBlockHash:   common.Hash{1},
+		TerminalBlockNumber: 0,
 	}
 	if _, err := api.ExchangeTransitionConfigurationV1(config); err == nil {
 		t.Fatal("expected error on invalid config, invalid hash")
@@ -502,8 +502,8 @@ func TestExchangeTransitionConfig(t *testing.T) {
 	// valid config
 	config = beacon.TransitionConfigurationV1{
 		// TerminalTotalDifficulty: (*hexutil.Big)(genesis.Config.TerminalTotalDifficulty),
-		TerminalBlockHash:       common.Hash{},
-		TerminalBlockNumber:     0,
+		TerminalBlockHash:   common.Hash{},
+		TerminalBlockNumber: 0,
 	}
 	if _, err := api.ExchangeTransitionConfigurationV1(config); err != nil {
 		t.Fatalf("expected no error on valid config, got %v", err)
@@ -511,8 +511,8 @@ func TestExchangeTransitionConfig(t *testing.T) {
 	// valid config
 	config = beacon.TransitionConfigurationV1{
 		// TerminalTotalDifficulty: (*hexutil.Big)(genesis.Config.TerminalTotalDifficulty),
-		TerminalBlockHash:       preMergeBlocks[5].Hash(),
-		TerminalBlockNumber:     6,
+		TerminalBlockHash:   preMergeBlocks[5].Hash(),
+		TerminalBlockNumber: 6,
 	}
 	if _, err := api.ExchangeTransitionConfigurationV1(config); err != nil {
 		t.Fatalf("expected no error on valid config, got %v", err)

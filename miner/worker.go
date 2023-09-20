@@ -461,6 +461,7 @@ func (w *worker) newWorkLoop(recommit time.Duration) {
 // the received event. It can support two modes: automatically generate task and
 // submit it or return task according to given parameters for various proposes.
 func (w *worker) mainLoop() {
+	log.Info("inside main loop of worker.go")
 	defer w.wg.Done()
 	defer w.chainHeadSub.Unsubscribe()
 	defer w.chainSideSub.Unsubscribe()
@@ -1105,10 +1106,12 @@ LOOP:
 			prevWork:  prevWork,
 		})
 		if err != nil {
+			log.Error("Error in prepareWork", "error", err)
 			return
 		}
 		prevWork = work
 		workList = append(workList, work)
+		log.Debug("Before calculating delay", "chain", w.chain, "header", work.header, "DelayLeftOver", w.config.DelayLeftOver)
 
 		delay := w.engine.Delay(w.chain, work.header, &w.config.DelayLeftOver)
 		if delay == nil {
@@ -1155,6 +1158,12 @@ LOOP:
 		if interruptCh == nil || stopTimer == nil {
 			// it is single commit work, no need to try several time.
 			log.Info("commitWork interruptCh or stopTimer is nil")
+			if interruptCh == nil {
+				log.Debug("interruptCh is nil")
+			}
+			if stopTimer == nil {
+				log.Debug("stopTimer is nil")
+			}
 			break
 		}
 

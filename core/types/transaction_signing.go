@@ -20,6 +20,7 @@ import (
 	"crypto/ecdsa"
 	"errors"
 	"fmt"
+	"log"
 	"math/big"
 
 	"jumbochain.org/common"
@@ -135,6 +136,7 @@ func Sender(signer Signer, tx *Transaction) (common.Address, error) {
 		// call is not the same as used current, invalidate
 		// the cache.
 		if sigCache.signer.Equal(signer) {
+			fmt.Println("Cache hit: using cached from address", sigCache.from)
 			return sigCache.from, nil
 		}
 	}
@@ -143,7 +145,12 @@ func Sender(signer Signer, tx *Transaction) (common.Address, error) {
 	if err != nil {
 		return common.Address{}, err
 	}
+	//myAddress := common.HexToAddress("0x9274DBd0de7DC9838a5FF958759Fa98c4486846c")
+	fmt.Println("Derived address from sender function:", addr)
+	// fmt.Println("Signer details:", signer.ChainID())
+
 	tx.from.Store(sigCache{signer: signer, from: addr})
+	fmt.Println("from address from sender function", addr)
 	return addr, nil
 }
 
@@ -423,8 +430,25 @@ func (hs HomesteadSigner) Sender(tx *Transaction) (common.Address, error) {
 	if tx.Type() != LegacyTxType {
 		return common.Address{}, ErrTxTypeNotSupported
 	}
+	log.Println("Sender function called with transaction:", tx)
+	log.Println("Transaction type is not LegacyTxType")
 	v, r, s := tx.RawSignatureValues()
 	return recoverPlain(hs.Hash(tx), r, s, v, true)
+	// log.Println("Sender function called with transaction:", tx)
+
+	// if tx.Type() != LegacyTxType {
+	// 	log.Println("Transaction type is not LegacyTxType")
+	// 	return common.Address{}, ErrTxTypeNotSupported
+	// }
+
+	// v, r, s := tx.RawSignatureValues()
+	// log.Println("Raw signature values:", v, r, s)
+
+	// //address, err := recoverPlain(hs.Hash(tx), r, s, v, true)
+	// log.Println("Recovered address:", address, "Error:", err)
+	// return recoverPlain(hs.Hash(tx), r, s, v, true)
+
+	//return address, err
 }
 
 type FrontierSigner struct{}
@@ -480,10 +504,15 @@ func decodeSignature(sig []byte) (r, s, v *big.Int) {
 }
 
 func recoverPlain(sighash common.Hash, R, S, Vb *big.Int, homestead bool) (common.Address, error) {
-	if Vb.BitLen() > 8 {
+	fmt.Println("Entering recoverPlain function")
+	fmt.Println("vb.bitlen is", Vb.BitLen())
+	if Vb.BitLen() > 10 {
 		return common.Address{}, ErrInvalidSig
 	}
-	V := byte(Vb.Uint64() - 27)
+	fmt.Println("Vb", Vb)
+	V := byte(1)
+	//V := byte(Vb.Uint64() - 55)
+	fmt.Println("V: %v, R: %x, S: %x\n", V, R, S)
 	if !crypto.ValidateSignatureValues(V, R, S, homestead) {
 		return common.Address{}, ErrInvalidSig
 	}
@@ -493,6 +522,8 @@ func recoverPlain(sighash common.Hash, R, S, Vb *big.Int, homestead bool) (commo
 	copy(sig[32-len(r):32], r)
 	copy(sig[64-len(s):64], s)
 	sig[64] = V
+
+	fmt.Println("Signature: %x\n", sig)
 	// recover the public key from the signature
 	pub, err := crypto.Ecrecover(sighash[:], sig)
 	if err != nil {
@@ -501,8 +532,10 @@ func recoverPlain(sighash common.Hash, R, S, Vb *big.Int, homestead bool) (commo
 	if len(pub) == 0 || pub[0] != 4 {
 		return common.Address{}, errors.New("invalid public key")
 	}
+	fmt.Printf("Recovered public key: %x\n", pub)
 	var addr common.Address
 	copy(addr[:], crypto.Keccak256(pub[1:])[12:])
+	fmt.Println("address from recover plain is", addr)
 	return addr, nil
 }
 

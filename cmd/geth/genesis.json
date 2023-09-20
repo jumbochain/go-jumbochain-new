@@ -1,6 +1,10 @@
 {
   "config": {
-    "chainId": 10
+    "chainId": 129,
+    "jumbo": {
+      "period": 3,
+      "epoch": 200
+    }
   },
   "nonce": "0x0000000000000042",
   "timestamp": "0x0",
@@ -10,5 +14,11 @@
   "difficulty": "0x400",
   "mixHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
   "coinbase": "0x3333333333333333333333333333333333333333",
-  "alloc": {}
+  "alloc": {
+    "9274DBd0de7DC9838a5FF958759Fa98c4486846c":{
+      "balance": "0x7fffffffffffffff"
+    }
+  }
+
+  
 }
