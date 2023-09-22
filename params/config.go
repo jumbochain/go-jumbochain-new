@@ -27,13 +27,13 @@ import (
 
 // Genesis hashes to enforce below configs on.
 var (
-	MainnetGenesisHash = common.HexToHash("0xd4e56740f876aef8c010b86a40d5f56745a118d0906a34e69aec8c0db1cb8fa3")
+	MainnetGenesisHash = common.HexToHash("0x8819b4c9f7d6950261b9ea4e8e2576c253ea67743eb3acda6a592f5925e406b1")
 	// RopstenGenesisHash = common.HexToHash("0x41941023680923e0fe4d74a34bdac8141f2540e3ae90623718e47d66d1ca4a2d")
 	// SepoliaGenesisHash = common.HexToHash("0x25a5cc106eea7138acab33231d7160d69cb777ee0c2c553fcddf5138993e6dd9")
 	// RinkebyGenesisHash = common.HexToHash("0x6341fd3daf94b748c72ced5a5b26028f2474f5f00d824504e4fa37a75767e177")
 	// GoerliGenesisHash  = common.HexToHash("0xbf7e331f7f7c1dd2e05159666b3bf8bc7a8a3a9eb1d518969eab529dd9b88c1a")
 	// KilnGenesisHash    = common.HexToHash("0x51c7fe41be669f69c45c33a56982cbde405313342d9e2b00d7c91a7b284dd4f8")
-	JumboGenesisHash = common.HexToHash("0x0d21840abff46b96c84b2ac9e10e4f5cdaeb5693cb665db62a2f3b02d2d57b5b")
+	JumboGenesisHash = common.HexToHash("0x8819b4c9f7d6950261b9ea4e8e2576c253ea67743eb3acda6a592f5925e406b1")
 )
 
 // TrustedCheckpoints associates each known checkpoint with the genesis hash of
@@ -51,46 +51,31 @@ var CheckpointOracles = map[common.Hash]*CheckpointOracleConfig{
 var (
 	// MainnetChainConfig is the chain parameters to run a node on the main network.
 	MainnetChainConfig = &ChainConfig{
-		ChainID: big.NewInt(10),
-		// HomesteadBlock:      big.NewInt(1_150_000),
-		// DAOForkBlock:        big.NewInt(1_920_000),
-		// DAOForkSupport:      true,
-		// EIP150Block:         big.NewInt(2_463_000),
-		// EIP150Hash:          common.HexToHash("0x2086799aeebeae135c246c65021c82b4e15a2c451340993aacfd2751886514f0"),
-		// EIP155Block:         big.NewInt(2_675_000),
-		// EIP158Block:         big.NewInt(2_675_000),
-		// ByzantiumBlock:      big.NewInt(4_370_000),
-		// ConstantinopleBlock: big.NewInt(7_280_000),
-		// PetersburgBlock:     big.NewInt(7_280_000),
-		// IstanbulBlock:       big.NewInt(9_069_000),
-		// MuirGlacierBlock:    big.NewInt(9_200_000),
-		// BerlinBlock:         big.NewInt(12_244_000),
-		// LondonBlock:         big.NewInt(12_965_000),
-		// ArrowGlacierBlock:   big.NewInt(13_773_000),
-		//Ethash: new(EthashConfig),
+		ChainID:        big.NewInt(129),
+		HomesteadBlock: big.NewInt(0),
 		JumboConsensus: &JumboConsensusConfig{
-			Period: 3,
-			Epoch:  200,
+			Period: 15,
+			Epoch:  3000,
 		},
 	}
 
 	// MainnetTrustedCheckpoint contains the light client trusted checkpoint for the main network.
 	MainnetTrustedCheckpoint = &TrustedCheckpoint{
 		SectionIndex: 451,
-		SectionHead:  common.HexToHash("0xe47f84b9967eb2ad2afff74d59901b63134660011822fdababaf8fdd18a75aa6"),
-		CHTRoot:      common.HexToHash("0xc31e0462ca3d39a46111bb6b63ac4e1cac84089472b7474a319d582f72b3f0c0"),
-		BloomRoot:    common.HexToHash("0x7c9f25ce3577a3ab330d52a7343f801899cf9d4980c69f81de31ccc1a055c809"),
+		SectionHead:  common.HexToHash("0x8819b4c9f7d6950261b9ea4e8e2576c253ea67743eb3acda6a592f5925e406b1"),
+		CHTRoot:      common.HexToHash("0x8819b4c9f7d6950261b9ea4e8e2576c253ea67743eb3acda6a592f5925e406b1"),
+		BloomRoot:    common.HexToHash("0x8819b4c9f7d6950261b9ea4e8e2576c253ea67743eb3acda6a592f5925e406b1"),
 	}
 
 	// MainnetCheckpointOracle contains a set of configs for the main network oracle.
 	MainnetCheckpointOracle = &CheckpointOracleConfig{
-		Address: common.HexToAddress("0x9a9070028361F7AAbeB3f2F2Dc07F82C4a98A02a"),
+		Address: common.HexToAddress("0x1171C0328145241f710fc40F64e2c0fE3453D984"),
 		Signers: []common.Address{
-			common.HexToAddress("0x1b2C260efc720BE89101890E4Db589b44E950527"), // Peter
-			common.HexToAddress("0x78d1aD571A1A09D60D9BBf25894b44e4C8859595"), // Martin
-			common.HexToAddress("0x286834935f4A8Cfb4FF4C77D5770C2775aE2b0E7"), // Zsolt
-			common.HexToAddress("0xb86e2B0Ab5A4B1373e40c51A7C712c70Ba2f9f8E"), // Gary
-			common.HexToAddress("0x0DF8fa387C602AE62559cC4aFa4972A7045d6707"), // Guillaume
+			common.HexToAddress("0x2Fc4C95F9EdAa09259edE5429aE95e3C54EC2642"), // Peter
+			common.HexToAddress("0x2Fc4C95F9EdAa09259edE5429aE95e3C54EC2642"), // Martin
+			common.HexToAddress("0x2Fc4C95F9EdAa09259edE5429aE95e3C54EC2642"), // Zsolt
+			common.HexToAddress("0x2Fc4C95F9EdAa09259edE5429aE95e3C54EC2642"), // Gary
+			common.HexToAddress("0x2Fc4C95F9EdAa09259edE5429aE95e3C54EC2642"), // Guillaume
 		},
 		Threshold: 2,
 	}
@@ -257,16 +242,16 @@ var (
 	//
 	// This configuration is intentionally not using keyed fields to force anyone
 	// adding flags to the config to also have to set these fields.
-	AllEthashProtocolChanges = &ChainConfig{big.NewInt(10), big.NewInt(0), nil, nil, &JumboConsensusConfig{Period: 0, Epoch: 30000}}
+	AllEthashProtocolChanges = &ChainConfig{big.NewInt(129), big.NewInt(0), big.NewInt(0), nil, nil, &JumboConsensusConfig{Period: 15, Epoch: 30000}}
 
 	// AllCliqueProtocolChanges contains every protocol change (EIPs) introduced
 	// and accepted by the Ethereum core developers into the Clique consensus.
 	//
 	// This configuration is intentionally not using keyed fields to force anyone
 	// adding flags to the config to also have to set these fields.
-	AllCliqueProtocolChanges = &ChainConfig{big.NewInt(10), big.NewInt(0), nil, &CliqueConfig{Period: 0, Epoch: 30000}, nil}
+	AllCliqueProtocolChanges = &ChainConfig{big.NewInt(129), big.NewInt(0), big.NewInt(0), nil, &CliqueConfig{Period: 15, Epoch: 3000}, nil}
 
-	TestChainConfig = &ChainConfig{big.NewInt(1), big.NewInt(0), new(EthashConfig), nil, nil}
+	TestChainConfig = &ChainConfig{big.NewInt(129), big.NewInt(0), big.NewInt(0), nil, nil, &JumboConsensusConfig{Period: 15, Epoch: 30000}}
 	TestRules       = TestChainConfig.Rules(new(big.Int), false)
 )
 
@@ -324,38 +309,15 @@ type CheckpointOracleConfig struct {
 // that any network, identified by its genesis block, can have its own
 // set of configuration options.
 type ChainConfig struct {
-	ChainID *big.Int `json:"chainId"` // chainId identifies the current chain and is used for replay protection
+	ChainID        *big.Int `json:"chainId"`                                    // chainId identifies the current chain and is used for replay protection
+	HomesteadBlock *big.Int `json:"homesteadBlock,omitempty" toml:",omitempty"` // Homestead switch block (nil = no fork, 0 = already homestead)
 
-	// HomesteadBlock *big.Int `json:"homesteadBlock,omitempty"` // Homestead switch block (nil = no fork, 0 = already homestead)
-
-	// DAOForkBlock   *big.Int `json:"daoForkBlock,omitempty"`   // TheDAO hard-fork switch block (nil = no fork)
-	// DAOForkSupport bool     `json:"daoForkSupport,omitempty"` // Whether the nodes supports or opposes the DAO hard-fork
-
-	// // EIP150 implements the Gas price changes (https://github.com/ethereum/EIPs/issues/150)
-	// EIP150Block *big.Int    `json:"eip150Block,omitempty"` // EIP150 HF block (nil = no fork)
-	// EIP150Hash  common.Hash `json:"eip150Hash,omitempty"`  // EIP150 HF hash (needed for header only clients as only gas pricing changed)
-
-	// EIP155Block *big.Int `json:"eip155Block,omitempty"` // EIP155 HF block
-	// EIP158Block *big.Int `json:"eip158Block,omitempty"` // EIP158 HF block
-
-	// ByzantiumBlock      *big.Int `json:"byzantiumBlock,omitempty"`      // Byzantium switch block (nil = no fork, 0 = already on byzantium)
-	// ConstantinopleBlock *big.Int `json:"constantinopleBlock,omitempty"` // Constantinople switch block (nil = no fork, 0 = already activated)
-	// PetersburgBlock     *big.Int `json:"petersburgBlock,omitempty"`     // Petersburg switch block (nil = same as Constantinople)
-	// IstanbulBlock       *big.Int `json:"istanbulBlock,omitempty"`       // Istanbul switch block (nil = no fork, 0 = already on istanbul)
-	// MuirGlacierBlock    *big.Int `json:"muirGlacierBlock,omitempty"`    // Eip-2384 (bomb delay) switch block (nil = no fork, 0 = already activated)
-	// BerlinBlock         *big.Int `json:"berlinBlock,omitempty"`         // Berlin switch block (nil = no fork, 0 = already on berlin)
-	// LondonBlock         *big.Int `json:"londonBlock,omitempty"`         // London switch block (nil = no fork, 0 = already on london)
-	// ArrowGlacierBlock   *big.Int `json:"arrowGlacierBlock,omitempty"`   // Eip-4345 (bomb delay) switch block (nil = no fork, 0 = already activated)
-	// MergeForkBlock      *big.Int `json:"mergeForkBlock,omitempty"`      // EIP-3675 (TheMerge) switch block (nil = no fork, 0 = already in merge proceedings)
-
-	// // TerminalTotalDifficulty is the amount of total difficulty reached by
-	// // the network that triggers the consensus upgrade.
 	TerminalTotalDifficulty *big.Int `json:"terminalTotalDifficulty,omitempty"`
 
 	// Various consensus engines
 	Ethash         *EthashConfig         `json:"ethash,omitempty"`
 	Clique         *CliqueConfig         `json:"clique,omitempty"`
-	JumboConsensus *JumboConsensusConfig `json:"parlia,omitempty" toml:",omitempty"`
+	JumboConsensus *JumboConsensusConfig `json:"jumbo,omitempty" toml:",omitempty"`
 }
 
 // EthashConfig is the consensus engine configs for proof-of-work based sealing.
@@ -388,11 +350,12 @@ func (c *ChainConfig) String() string {
 	case c.JumboConsensus != nil:
 		engine = c.JumboConsensus
 	default:
-		engine = "unknown"
+		// engine = "unknown"
+		engine = c.JumboConsensus
 	}
-	return fmt.Sprintf("{ChainID: %v, Engine: %v}",
+	return fmt.Sprintf("{ChainID: %v Homestead: %v Engine: %v}",
 		c.ChainID,
-		// c.HomesteadBlock,
+		c.HomesteadBlock,
 		// c.DAOForkBlock,
 		// c.DAOForkSupport,
 		// c.EIP150Block,
@@ -412,10 +375,10 @@ func (c *ChainConfig) String() string {
 	)
 }
 
-// // IsHomestead returns whether num is either equal to the homestead block or greater.
-// func (c *ChainConfig) IsHomestead(num *big.Int) bool {
-// 	return isForked(c.HomesteadBlock, num)
-// }
+// IsHomestead returns whether num is either equal to the homestead block or greater.
+func (c *ChainConfig) IsHomestead(num *big.Int) bool {
+	return isForked(c.HomesteadBlock, num)
+}
 
 // // IsDAOFork returns whether num is either equal to the DAO fork block or greater.
 // func (c *ChainConfig) IsDAOFork(num *big.Int) bool {
@@ -480,12 +443,12 @@ func (c *ChainConfig) String() string {
 // }
 
 // // IsTerminalPoWBlock returns whether the given block is the last block of PoW stage.
-// func (c *ChainConfig) IsTerminalPoWBlock(parentTotalDiff *big.Int, totalDiff *big.Int) bool {
-// 	if c.TerminalTotalDifficulty == nil {
-// 		return false
-// 	}
-// 	return parentTotalDiff.Cmp(c.TerminalTotalDifficulty) < 0 && totalDiff.Cmp(c.TerminalTotalDifficulty) >= 0
-// }
+func (c *ChainConfig) IsTerminalPoWBlock(parentTotalDiff *big.Int, totalDiff *big.Int) bool {
+	if c.TerminalTotalDifficulty == nil {
+		return false
+	}
+	return parentTotalDiff.Cmp(c.TerminalTotalDifficulty) < 0 && totalDiff.Cmp(c.TerminalTotalDifficulty) >= 0
+}
 
 type JumboConsensusConfig struct {
 	Period uint64 `json:"period"` // Number of seconds between blocks to enforce
@@ -525,7 +488,7 @@ func (c *ChainConfig) CheckConfigForkOrder() error {
 	}
 	var lastFork fork
 	for _, cur := range []fork{
-		// {name: "homesteadBlock", block: c.HomesteadBlock},
+		{name: "homesteadBlock", block: c.HomesteadBlock},
 		// {name: "daoForkBlock", block: c.DAOForkBlock, optional: true},
 		// {name: "eip150Block", block: c.EIP150Block},
 		// {name: "eip155Block", block: c.EIP155Block},
@@ -562,9 +525,9 @@ func (c *ChainConfig) CheckConfigForkOrder() error {
 }
 
 func (c *ChainConfig) checkCompatible(newcfg *ChainConfig, head *big.Int) *ConfigCompatError {
-	// if isForkIncompatible(c.HomesteadBlock, newcfg.HomesteadBlock, head) {
-	// 	return newCompatError("Homestead fork block", c.HomesteadBlock, newcfg.HomesteadBlock)
-	// }
+	if isForkIncompatible(c.HomesteadBlock, newcfg.HomesteadBlock, head) {
+		return newCompatError("Homestead fork block", c.HomesteadBlock, newcfg.HomesteadBlock)
+	}
 	// if isForkIncompatible(c.DAOForkBlock, newcfg.DAOForkBlock, head) {
 	// 	return newCompatError("DAO fork block", c.DAOForkBlock, newcfg.DAOForkBlock)
 	// }
@@ -619,27 +582,27 @@ func (c *ChainConfig) checkCompatible(newcfg *ChainConfig, head *big.Int) *Confi
 
 // isForkIncompatible returns true if a fork scheduled at s1 cannot be rescheduled to
 // block s2 because head is already past the fork.
-// func isForkIncompatible(s1, s2, head *big.Int) bool {
-// 	return (isForked(s1, head) || isForked(s2, head)) && !configNumEqual(s1, s2)
-// }
+func isForkIncompatible(s1, s2, head *big.Int) bool {
+	return (isForked(s1, head) || isForked(s2, head)) && !configNumEqual(s1, s2)
+}
 
 // isForked returns whether a fork scheduled at block s is active at the given head block.
-// func isForked(s, head *big.Int) bool {
-// 	if s == nil || head == nil {
-// 		return false
-// 	}
-// 	return s.Cmp(head) <= 0
-// }
+func isForked(s, head *big.Int) bool {
+	if s == nil || head == nil {
+		return false
+	}
+	return s.Cmp(head) <= 0
+}
 
-// func configNumEqual(x, y *big.Int) bool {
-// 	if x == nil {
-// 		return y == nil
-// 	}
-// 	if y == nil {
-// 		return x == nil
-// 	}
-// 	return x.Cmp(y) == 0
-// }
+func configNumEqual(x, y *big.Int) bool {
+	if x == nil {
+		return y == nil
+	}
+	if y == nil {
+		return x == nil
+	}
+	return x.Cmp(y) == 0
+}
 
 // ConfigCompatError is raised if the locally-stored blockchain is initialised with a
 // ChainConfig that would alter the past.
@@ -651,22 +614,22 @@ type ConfigCompatError struct {
 	RewindTo uint64
 }
 
-// func newCompatError(what string, storedblock, newblock *big.Int) *ConfigCompatError {
-// 	var rew *big.Int
-// 	switch {
-// 	case storedblock == nil:
-// 		rew = newblock
-// 	case newblock == nil || storedblock.Cmp(newblock) < 0:
-// 		rew = storedblock
-// 	default:
-// 		rew = newblock
-// 	}
-// 	err := &ConfigCompatError{what, storedblock, newblock, 0}
-// 	if rew != nil && rew.Sign() > 0 {
-// 		err.RewindTo = rew.Uint64() - 1
-// 	}
-// 	return err
-// }
+func newCompatError(what string, storedblock, newblock *big.Int) *ConfigCompatError {
+	var rew *big.Int
+	switch {
+	case storedblock == nil:
+		rew = newblock
+	case newblock == nil || storedblock.Cmp(newblock) < 0:
+		rew = storedblock
+	default:
+		rew = newblock
+	}
+	err := &ConfigCompatError{what, storedblock, newblock, 0}
+	if rew != nil && rew.Sign() > 0 {
+		err.RewindTo = rew.Uint64() - 1
+	}
+	return err
+}
 
 func (err *ConfigCompatError) Error() string {
 	return fmt.Sprintf("mismatching %s in database (have %d, want %d, rewindto %d)", err.What, err.StoredConfig, err.NewConfig, err.RewindTo)
@@ -692,8 +655,8 @@ func (c *ChainConfig) Rules(num *big.Int, isMerge bool) Rules {
 		chainID = new(big.Int)
 	}
 	return Rules{
-		ChainID: new(big.Int).Set(chainID),
-		// IsHomestead:      c.IsHomestead(num),
+		ChainID:     new(big.Int).Set(chainID),
+		IsHomestead: c.IsHomestead(num),
 		// IsEIP150:         c.IsEIP150(num),
 		// IsEIP155:         c.IsEIP155(num),
 		// IsEIP158:         c.IsEIP158(num),

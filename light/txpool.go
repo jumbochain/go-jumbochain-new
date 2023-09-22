@@ -355,6 +355,7 @@ func (pool *TxPool) validateTx(ctx context.Context, tx *types.Transaction) error
 	// Validate the transaction sender and it's sig. Throw
 	// if the from fields is invalid.
 	if from, err = types.Sender(pool.signer, tx); err != nil {
+		fmt.Println("this is calling in light txpool")
 		return core.ErrInvalidSender
 	}
 	// Last but not least check for nonce errors
@@ -380,6 +381,7 @@ func (pool *TxPool) validateTx(ctx context.Context, tx *types.Transaction) error
 	// Transactor should have enough funds to cover the costs
 	// cost == V + GP * GL
 	if b := currentState.GetBalance(from); b.Cmp(tx.Cost()) < 0 {
+		fmt.Println("this is balance and cost", )
 		return core.ErrInsufficientFunds
 	}
 

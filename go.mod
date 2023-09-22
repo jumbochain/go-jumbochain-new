@@ -22,6 +22,7 @@ require (
 	github.com/edsrzf/mmap-go v1.1.0
 	github.com/ethereum/c-kzg-4844 v0.3.0
 	github.com/ethereum/go-ethereum v1.12.0
+	github.com/tidwall/wal v1.1.7
 	github.com/fatih/color v1.9.0
 	github.com/fjl/gencodec v0.0.0-20230517082657-f9840df7b83e
 	github.com/fjl/memsize v0.0.0-20190710130421-bcb5799ab5e5

@@ -282,9 +282,9 @@ func SetupGenesisBlockWithOverride(db ethdb.Database, genesis *Genesis, override
 	// if overrideArrowGlacier != nil {
 	// 	newcfg.ArrowGlacierBlock = overrideArrowGlacier
 	// }
-	// if overrideTerminalTotalDifficulty != nil {
-	// 	newcfg.TerminalTotalDifficulty = overrideTerminalTotalDifficulty
-	// }
+	if overrideTerminalTotalDifficulty != nil {
+		newcfg.TerminalTotalDifficulty = overrideTerminalTotalDifficulty
+	}
 	if err := newcfg.CheckConfigForkOrder(); err != nil {
 		return newcfg, common.Hash{}, err
 	}
@@ -304,9 +304,9 @@ func SetupGenesisBlockWithOverride(db ethdb.Database, genesis *Genesis, override
 		// if overrideArrowGlacier != nil {
 		// 	newcfg.ArrowGlacierBlock = overrideArrowGlacier
 		// }
-		// if overrideTerminalTotalDifficulty != nil {
-		// 	newcfg.TerminalTotalDifficulty = overrideTerminalTotalDifficulty
-		// }
+		if overrideTerminalTotalDifficulty != nil {
+			newcfg.TerminalTotalDifficulty = overrideTerminalTotalDifficulty
+		}
 	}
 	// Check config compatibility and write the config. Compatibility errors
 	// are returned to the caller unless we're already at block zero.

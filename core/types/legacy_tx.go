@@ -110,3 +110,5 @@ func (tx *LegacyTx) rawSignatureValues() (v, r, s *big.Int) {
 func (tx *LegacyTx) setSignatureValues(chainID, v, r, s *big.Int) {
 	tx.V, tx.R, tx.S = v, r, s
 }
+
+//"insufficient funds for gas * price + value"

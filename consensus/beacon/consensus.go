@@ -77,6 +77,7 @@ func (beacon *Beacon) Author(header *types.Header) (common.Address, error) {
 }
 
 func (beacon *Beacon) Delay(_ consensus.ChainReader, _ *types.Header, _ *time.Duration) *time.Duration {
+	fmt.Println("--------------------inside beacon --------------")
 	return nil
 }
 

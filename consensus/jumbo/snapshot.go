@@ -106,7 +106,7 @@ func (s validatorsAscending) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
 
 // loadSnapshot loads an existing snapshot from the database.
 func loadSnapshot(config *params.JumboConsensusConfig, sigCache *lru.ARCCache, db ethdb.Database, hash common.Hash, ethAPI *ethapi.PublicBlockChainAPI) (*Snapshot, error) {
-	blob, err := db.Get(append([]byte("parlia-"), hash[:]...))
+	blob, err := db.Get(append([]byte("jumbo-"), hash[:]...))
 	if err != nil {
 		return nil, err
 	}
@@ -127,7 +127,7 @@ func (s *Snapshot) store(db ethdb.Database) error {
 	if err != nil {
 		return err
 	}
-	return db.Put(append([]byte("parlia-"), s.Hash[:]...), blob)
+	return db.Put(append([]byte("jumbo-"), s.Hash[:]...), blob)
 }
 
 // copy creates a deep copy of the snapshot
@@ -166,15 +166,15 @@ func (s *Snapshot) copy() *Snapshot {
 	return cpy
 }
 
-func (s *Snapshot) isMajorityFork(forkHash string) bool {
-	ally := 0
-	for _, h := range s.RecentForkHashes {
-		if h == forkHash {
-			ally++
-		}
-	}
-	return ally > len(s.RecentForkHashes)/2
-}
+// func (s *Snapshot) isMajorityFork(forkHash string) bool {
+// 	ally := 0
+// 	for _, h := range s.RecentForkHashes {
+// 		if h == forkHash {
+// 			ally++
+// 		}
+// 	}
+// 	return ally > len(s.RecentForkHashes)/2
+// }
 
 func (s *Snapshot) updateAttestation(header *types.Header, chainConfig *params.ChainConfig, parliaConfig *params.JumboConsensusConfig) {
 	// if !chainConfig.IsLuban(header.Number) {

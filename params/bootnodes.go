@@ -16,13 +16,16 @@
 
 package params
 
-import "jumbochain.org/common"
+import (
+	"jumbochain.org/common"
+)
 
 // MainnetBootnodes are the enode URLs of the P2P bootstrap nodes running on
 // the main Ethereum network.
 var MainnetBootnodes = []string{
 	// Ethereum Foundation Go Bootnodes
-	"enode://e59cb5ebd87b266932c78a8130ca6bf39196f7cf67b9f59b7723e55bad9ac98a9cb95e69f8d86e82199da5e7ccc02efd57bd80fe1c3dd5250019dbba70237181@127.0.0.1:30304", // bootnode-aws-ap-southeast-1-001
+	// "enode://e59cb5ebd87b266932c78a8130ca6bf39196f7cf67b9f59b7723e55bad9ac98a9cb95e69f8d86e82199da5e7ccc02efd57bd80fe1c3dd5250019dbba70237181@127.0.0.1:30304", // bootnode-aws-ap-southeast-1-001
+	"enode://e2ff3c24c41251e7bfdff03d0e5557656ff850ce62d1749aa8dd6c8e77ff8d4a2ea6120ebe732e84568068006fa66620ad85baa663af4174a73c42fce1040ee5@127.0.0.1:0?discport=30301",
 }
 
 // RopstenBootnodes are the enode URLs of the P2P bootstrap nodes running on the

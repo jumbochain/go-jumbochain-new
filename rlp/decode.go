@@ -89,7 +89,6 @@ func Decode(r io.Reader, val interface{}) error {
 // the decoding rules. The input must contain exactly one value and no trailing data.
 func DecodeBytes(b []byte, val interface{}) error {
 	r := bytes.NewReader(b)
-
 	stream := streamPool.Get().(*Stream)
 	defer streamPool.Put(stream)
 

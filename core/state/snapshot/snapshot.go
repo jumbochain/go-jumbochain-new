@@ -687,6 +687,7 @@ func diffToDisk(bottom *diffLayer) *diskLayer {
 // to disk as a trie too to allow continuing any pending generation op.
 func (t *Tree) Journal(root common.Hash) (common.Hash, error) {
 	// Retrieve the head snapshot to journal from var snap snapshot
+	fmt.Println("this is snapshot issue", root)
 	snap := t.Snapshot(root)
 	if snap == nil {
 		return common.Hash{}, fmt.Errorf("snapshot [%#x] missing", root)

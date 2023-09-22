@@ -1,0 +1,4 @@
+
+admin
+eth
+eth.getBlockByNumber(0)

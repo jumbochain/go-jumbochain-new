@@ -232,12 +232,8 @@ type Jumbo struct {
 }
 
 // New creates a Parlia consensus engine.
-func New(
-	chainConfig *params.ChainConfig,
-	db ethdb.Database,
-	ethAPI *ethapi.PublicBlockChainAPI,
-	genesisHash common.Hash,
-) *Jumbo {
+func New(chainConfig *params.ChainConfig, db ethdb.Database, ethAPI *ethapi.PublicBlockChainAPI, genesisHash common.Hash) *Jumbo {
+	fmt.Println("our consensue is running")
 	// get parlia config
 	parliaConfig := chainConfig.JumboConsensus
 
@@ -1254,7 +1250,7 @@ func (p *Jumbo) VerifyVote(chain consensus.ChainHeaderReader, vote *types.VoteEn
 			if addr == p.val {
 				validVotesfromSelfCounter.Inc(1)
 			}
-			metrics.GetOrRegisterCounter(fmt.Sprintf("parlia/VerifyVote/%s", addr.String()), nil).Inc(1)
+			metrics.GetOrRegisterCounter(fmt.Sprintf("jumbo/VerifyVote/%s", addr.String()), nil).Inc(1)
 			return nil
 		}
 	}
@@ -1275,13 +1271,14 @@ func (p *Jumbo) Authorize(val common.Address, signFn SignerFn, signTxFn SignerTx
 
 // Argument leftOver is the time reserved for block finalize(calculate root, distribute income...)
 func (p *Jumbo) Delay(chain consensus.ChainReader, header *types.Header, leftOver *time.Duration) *time.Duration {
+	fmt.Println("this is calling from consensus &-------------")
 	// number := header.Number.Uint64()
 	// snap, err := p.snapshot(chain, number-1, header.ParentHash, nil)
 	// if err != nil {
 	// 	return nil
 	// }
 	// delay := p.delayForRamanujanFork(snap, header)
-	delay := time.Duration(0)
+	delay := 500 * time.Millisecond
 
 	if *leftOver >= time.Duration(p.config.Period)*time.Second {
 		// ignore invalid leftOver
@@ -1480,7 +1477,7 @@ func (p *Jumbo) APIs(chain consensus.ChainHeaderReader) []rpc.API {
 	return []rpc.API{{
 		Namespace: "jumbo",
 		Version:   "1.0",
-		Service:   &API{chain: chain, parlia: p},
+		Service:   &API{chain: chain, jumbo: p},
 		Public:    false,
 	}}
 }

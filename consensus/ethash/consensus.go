@@ -96,6 +96,7 @@ func (ethash *Ethash) Author(header *types.Header) (common.Address, error) {
 }
 
 func (ethash *Ethash) Delay(_ consensus.ChainReader, _ *types.Header, _ *time.Duration) *time.Duration {
+	fmt.Println("calling from ethash")
 	return nil
 }
 

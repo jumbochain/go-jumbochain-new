@@ -553,7 +553,7 @@ func (h *handler) Stop() {
 	h.peers.close()
 	h.peerWG.Wait()
 
-	log.Info("Ethereum protocol stopped")
+	log.Info("Jumbochain protocol stopped")
 }
 
 // BroadcastBlock will either propagate a block to a subset of its peers, or

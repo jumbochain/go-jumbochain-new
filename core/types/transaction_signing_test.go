@@ -17,6 +17,10 @@
 package types
 
 import (
+	"crypto/ecdsa"
+	"encoding/hex"
+	"fmt"
+	"log"
 	"math/big"
 	"testing"
 
@@ -25,11 +29,27 @@ import (
 	"jumbochain.org/rlp"
 )
 
-func TestEIP155Signing(t *testing.T) {
-	key, _ := crypto.GenerateKey()
-	addr := crypto.PubkeyToAddress(key.PublicKey)
+func private()(common.Address, *ecdsa.PrivateKey) {
+	privateKeyBytes, err := hex.DecodeString("1122468105a0ad51aa9723e1e70023b20d4f06976047382e0760feb9935e9b0e")
+	if err != nil {
+		log.Fatal(err)
+	}
 
-	signer := NewEIP155Signer(big.NewInt(18))
+	// Generate private key object
+	privateKeyECDSA, err := crypto.ToECDSA(privateKeyBytes)
+	if err != nil {
+		log.Fatal(err)
+	}
+	return crypto.PubkeyToAddress(privateKeyECDSA.PublicKey), privateKeyECDSA
+
+}
+
+func TestEIP155Signing(t *testing.T) {
+	addr, key:= private()
+
+	// myAddress := common.HexToAddress("0x1171C0328145241f710fc40F64e2c0fE3453D984")
+	fmt.Println("this is testaddr", addr)
+	signer := NewEIP155Signer(big.NewInt(129))
 	tx, err := SignTx(NewTransaction(0, addr, new(big.Int), 0, new(big.Int), nil), signer, key)
 	if err != nil {
 		t.Fatal(err)

@@ -45,7 +45,7 @@ import (
 type EthAPIBackend struct {
 	extRPCEnabled       bool
 	allowUnprotectedTxs bool
-	eth                 *Ethereum
+	eth                 *Jumbochain
 	gpo                 *gasprice.Oracle
 }
 
@@ -243,6 +243,7 @@ func (b *EthAPIBackend) SubscribeLogsEvent(ch chan<- []*types.Log) event.Subscri
 }
 
 func (b *EthAPIBackend) SendTx(ctx context.Context, signedTx *types.Transaction) error {
+	fmt.Println("inside this apibackend", signedTx.ChainId())
 	return b.eth.txPool.AddLocal(signedTx)
 }
 

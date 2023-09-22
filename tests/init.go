@@ -31,7 +31,7 @@ var Forks = map[string]*params.ChainConfig{
 	},
 	"Homestead": {
 		ChainID: big.NewInt(1),
-		// HomesteadBlock: big.NewInt(0),
+		HomesteadBlock: big.NewInt(0),
 	},
 	"EIP150": {
 		ChainID: big.NewInt(1),
