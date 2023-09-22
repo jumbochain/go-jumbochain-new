@@ -54,14 +54,16 @@ require (
 	github.com/peterh/liner v1.2.0
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/tsdb v0.10.0
-	github.com/prysmaticlabs/prysm/v4 v4.0.8
+	github.com/prysmaticlabs/prysm/v4 v4.0.2
 	github.com/rjeczalik/notify v0.9.1
 	github.com/rs/cors v1.7.0
 	github.com/shirou/gopsutil v3.21.11+incompatible
 	github.com/status-im/keycard-go v0.2.0
 	github.com/stretchr/testify v1.8.4
 	github.com/syndtr/goleveldb v1.0.1-0.20220721030215-126854af5e6d
+	github.com/tidwall/wal v1.1.7
 	github.com/tyler-smith/go-bip39 v1.1.0
+	github.com/wealdtech/go-eth2-wallet-encryptor-keystorev4 v1.1.3
 	github.com/willf/bitset v1.1.3
 	golang.org/x/crypto v0.11.0
 	golang.org/x/mobile v0.0.0-20190719004257-d2bd2a29d028
@@ -73,4 +75,13 @@ require (
 	google.golang.org/protobuf v1.31.0 // indirect
 	gopkg.in/natefinch/npipe.v2 v2.0.0-20160621034901-c1b8fa8bdcce
 	gopkg.in/urfave/cli.v1 v1.20.0
+)
+
+replace (
+	github.com/btcsuite/btcd => github.com/btcsuite/btcd v0.23.0
+	github.com/cometbft/cometbft => github.com/bnb-chain/greenfield-tendermint v0.0.0-20230417032003-4cda1f296fb2
+	github.com/grpc-ecosystem/grpc-gateway/v2 => github.com/prysmaticlabs/grpc-gateway/v2 v2.3.1-0.20210702154020-550e1cd83ec1
+	github.com/syndtr/goleveldb v1.0.1 => github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7
+	github.com/tendermint/tendermint => github.com/bnb-chain/tendermint v0.31.15
+
 )
