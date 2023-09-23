@@ -1,3 +1,3 @@
 [node]
-NodeKey = "/home/ubuntu/go-jumbochain-new/cmd/bootnode/boot.key"
+NodeKey = "/home/ubuntu/go-jumbochain-new/cmd/bootnode/bootnode.key"
 ListenAddr = "0.0.0.0:30301"

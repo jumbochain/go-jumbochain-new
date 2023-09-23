@@ -1,6 +1,7 @@
 {
   "config": {
     "chainId": 129,
+    "homesteadBlock": 0,
     "jumbo": {
       "period": 3,
       "epoch": 200
@@ -15,7 +16,7 @@
   "mixHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
   "coinbase": "0x3333333333333333333333333333333333333333",
   "alloc": {
-    "9274DBd0de7DC9838a5FF958759Fa98c4486846c":{
+    "0x2b990562B044D07DFae791A8f7fF5D91e2B6fcD1":{
       "balance": "0x7fffffffffffffff"
     }
   }

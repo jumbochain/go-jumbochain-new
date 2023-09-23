@@ -22,7 +22,7 @@ import "jumbochain.org/common"
 // the main Ethereum network.
 var MainnetBootnodes = []string{
 	// Ethereum Foundation Go Bootnodes
-	"enode://e59cb5ebd87b266932c78a8130ca6bf39196f7cf67b9f59b7723e55bad9ac98a9cb95e69f8d86e82199da5e7ccc02efd57bd80fe1c3dd5250019dbba70237181@127.0.0.1:30304", // bootnode-aws-ap-southeast-1-001
+	"enode://287acce0fb744f1eb2410c702626be1e2c7b7876bba20e7a987804c938d5f10a8dfaa921944d8fe5266e7965773e8d69a653807f8d8694030e31d09c54f720f6@127.0.0.1:0?discport=30301", // bootnode-aws-ap-southeast-1-001
 }
 
 // RopstenBootnodes are the enode URLs of the P2P bootstrap nodes running on the
