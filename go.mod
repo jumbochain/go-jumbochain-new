@@ -22,7 +22,6 @@ require (
 	github.com/edsrzf/mmap-go v1.1.0
 	github.com/ethereum/c-kzg-4844 v0.3.0
 	github.com/ethereum/go-ethereum v1.12.0
-	github.com/tidwall/wal v1.1.7
 	github.com/fatih/color v1.9.0
 	github.com/fjl/gencodec v0.0.0-20230517082657-f9840df7b83e
 	github.com/fjl/memsize v0.0.0-20190710130421-bcb5799ab5e5
@@ -55,7 +54,7 @@ require (
 	github.com/peterh/liner v1.2.0
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/tsdb v0.10.0
-	github.com/prysmaticlabs/prysm/v4 v4.0.8
+	github.com/prysmaticlabs/prysm/v4 v4.0.2
 	github.com/rjeczalik/notify v0.9.1
 	github.com/rs/cors v1.7.0
 	github.com/shirou/gopsutil v3.21.11+incompatible

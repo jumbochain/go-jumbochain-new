@@ -2,6 +2,8 @@
 data
 ./cmd/geth/data
 ./cmd/geth/data/*
+./cmd/geth/data1
+./cmd/geth/data1/*
 
 node
 ./cmd/geth/node

@@ -29,8 +29,8 @@ import (
 	"jumbochain.org/rlp"
 )
 
-func private()(common.Address, *ecdsa.PrivateKey) {
-	privateKeyBytes, err := hex.DecodeString("1122468105a0ad51aa9723e1e70023b20d4f06976047382e0760feb9935e9b0e")
+func private() (common.Address, *ecdsa.PrivateKey) {
+	privateKeyBytes, err := hex.DecodeString("b0238f4b6b2b57709eb594e585293e8ba562ac97ee0d6e3253a5b0aaa3eee527")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -45,7 +45,9 @@ func private()(common.Address, *ecdsa.PrivateKey) {
 }
 
 func TestEIP155Signing(t *testing.T) {
-	addr, key:= private()
+	// addr, key:= private()
+	key, _ := crypto.GenerateKey()
+	addr := crypto.PubkeyToAddress(key.PublicKey)
 
 	// myAddress := common.HexToAddress("0x1171C0328145241f710fc40F64e2c0fE3453D984")
 	fmt.Println("this is testaddr", addr)
