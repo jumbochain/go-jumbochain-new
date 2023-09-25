@@ -44,11 +44,11 @@ import (
 // PublicEthereumAPI provides an API to access Ethereum full node-related
 // information.
 type PublicEthereumAPI struct {
-	e *Ethereum
+	e *Jumbochain
 }
 
 // NewPublicEthereumAPI creates a new Ethereum protocol API for full nodes.
-func NewPublicEthereumAPI(e *Ethereum) *PublicEthereumAPI {
+func NewPublicEthereumAPI(e *Jumbochain) *PublicEthereumAPI {
 	return &PublicEthereumAPI{e}
 }
 
@@ -70,11 +70,11 @@ func (api *PublicEthereumAPI) Hashrate() hexutil.Uint64 {
 // PublicMinerAPI provides an API to control the miner.
 // It offers only methods that operate on data that pose no security risk when it is publicly accessible.
 type PublicMinerAPI struct {
-	e *Ethereum
+	e *Jumbochain
 }
 
 // NewPublicMinerAPI create a new PublicMinerAPI instance.
-func NewPublicMinerAPI(e *Ethereum) *PublicMinerAPI {
+func NewPublicMinerAPI(e *Jumbochain) *PublicMinerAPI {
 	return &PublicMinerAPI{e}
 }
 
@@ -86,11 +86,11 @@ func (api *PublicMinerAPI) Mining() bool {
 // PrivateMinerAPI provides private RPC methods to control the miner.
 // These methods can be abused by external users and must be considered insecure for use by untrusted users.
 type PrivateMinerAPI struct {
-	e *Ethereum
+	e *Jumbochain
 }
 
 // NewPrivateMinerAPI create a new RPC service which controls the miner of this node.
-func NewPrivateMinerAPI(e *Ethereum) *PrivateMinerAPI {
+func NewPrivateMinerAPI(e *Jumbochain) *PrivateMinerAPI {
 	return &PrivateMinerAPI{e: e}
 }
 
@@ -150,12 +150,12 @@ func (api *PrivateMinerAPI) SetRecommitInterval(interval int) {
 // PrivateAdminAPI is the collection of Ethereum full node-related APIs
 // exposed over the private admin endpoint.
 type PrivateAdminAPI struct {
-	eth *Ethereum
+	eth *Jumbochain
 }
 
 // NewPrivateAdminAPI creates a new API definition for the full node private
 // admin methods of the Ethereum service.
-func NewPrivateAdminAPI(eth *Ethereum) *PrivateAdminAPI {
+func NewPrivateAdminAPI(eth *Jumbochain) *PrivateAdminAPI {
 	return &PrivateAdminAPI{eth: eth}
 }
 
@@ -260,12 +260,12 @@ func (api *PrivateAdminAPI) ImportChain(file string) (bool, error) {
 // PublicDebugAPI is the collection of Ethereum full node APIs exposed
 // over the public debugging endpoint.
 type PublicDebugAPI struct {
-	eth *Ethereum
+	eth *Jumbochain
 }
 
 // NewPublicDebugAPI creates a new API definition for the full node-
 // related public debug methods of the Ethereum service.
-func NewPublicDebugAPI(eth *Ethereum) *PublicDebugAPI {
+func NewPublicDebugAPI(eth *Jumbochain) *PublicDebugAPI {
 	return &PublicDebugAPI{eth: eth}
 }
 
@@ -303,12 +303,12 @@ func (api *PublicDebugAPI) DumpBlock(blockNr rpc.BlockNumber) (state.Dump, error
 // PrivateDebugAPI is the collection of Ethereum full node APIs exposed over
 // the private debugging endpoint.
 type PrivateDebugAPI struct {
-	eth *Ethereum
+	eth *Jumbochain
 }
 
 // NewPrivateDebugAPI creates a new API definition for the full node-related
 // private debug methods of the Ethereum service.
-func NewPrivateDebugAPI(eth *Ethereum) *PrivateDebugAPI {
+func NewPrivateDebugAPI(eth *Jumbochain) *PrivateDebugAPI {
 	return &PrivateDebugAPI{eth: eth}
 }
 

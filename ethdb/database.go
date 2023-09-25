@@ -77,6 +77,8 @@ type AncientReaderOp interface {
 	// Ancient retrieves an ancient binary blob from the append-only immutable files.
 	Ancient(kind string, number uint64) ([]byte, error)
 
+	ItemAmountInAncient() (uint64, error)
+
 	// AncientRange retrieves multiple items in sequence, starting from the index 'start'.
 	// It will return
 	//  - at most 'count' items,
@@ -187,4 +189,9 @@ type Database interface {
 	Compacter
 	Snapshotter
 	io.Closer
+}
+
+type DiffStore interface {
+	DiffStore() KeyValueStore
+	SetDiffStore(diff KeyValueStore)
 }

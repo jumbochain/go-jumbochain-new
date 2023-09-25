@@ -20,7 +20,6 @@ import (
 	"crypto/ecdsa"
 	"errors"
 	"fmt"
-	"log"
 	"math/big"
 
 	"jumbochain.org/common"
@@ -409,46 +408,94 @@ func (s EIP155Signer) Hash(tx *Transaction) common.Hash {
 
 // HomesteadTransaction implements TransactionInterface using the
 // homestead rules.
-type HomesteadSigner struct{ FrontierSigner }
+type HomesteadSigner struct {
+	chainId, chainIdMul *big.Int
+}
+
+func NewHomesteadSigner(chainId *big.Int) HomesteadSigner {
+	if chainId == nil {
+		chainId = new(big.Int)
+	}
+	return HomesteadSigner{
+		chainId:    chainId,
+		chainIdMul: new(big.Int).Mul(chainId, big.NewInt(2)),
+	}
+}
 
 func (s HomesteadSigner) ChainID() *big.Int {
-	return nil
+	return s.chainId
 }
 
 func (s HomesteadSigner) Equal(s2 Signer) bool {
-	_, ok := s2.(HomesteadSigner)
-	return ok
+	//_, ok := s2.(HomesteadSigner)
+	home55, ok := s2.(HomesteadSigner)
+	return ok && home55.chainId.Cmp(s.chainId) == 0
+	//return ok
 }
 
 // SignatureValues returns signature values. This signature
 // needs to be in the [R || S || V] format where V is 0 or 1.
 func (hs HomesteadSigner) SignatureValues(tx *Transaction, sig []byte) (r, s, v *big.Int, err error) {
-	return hs.FrontierSigner.SignatureValues(tx, sig)
+	if tx.Type() != LegacyTxType {
+		return nil, nil, nil, ErrTxTypeNotSupported
+	}
+	r, s, v = decodeSignature(sig)
+	if hs.chainId.Sign() != 0 {
+		v = big.NewInt(int64(sig[64] + 35))
+		v.Add(v, hs.chainIdMul)
+	}
+	return r, s, v, nil
 }
 
+// func (hs HomesteadSigner) Sender(tx *Transaction) (common.Address, error) {
+// 	if tx.Type() != LegacyTxType {
+// 		return common.Address{}, ErrTxTypeNotSupported
+// 	}
+// 	log.Println("Sender function called with transaction:", tx)
+// 	log.Println("Transaction type is not LegacyTxType")
+// 	v, r, s := tx.RawSignatureValues()
+// 	return recoverPlain(hs.Hash(tx), r, s, v, true)
+// 	// log.Println("Sender function called with transaction:", tx)
+
+// 	// if tx.Type() != LegacyTxType {
+// 	// 	log.Println("Transaction type is not LegacyTxType")
+// 	// 	return common.Address{}, ErrTxTypeNotSupported
+// 	// }
+
+// 	// v, r, s := tx.RawSignatureValues()
+// 	// log.Println("Raw signature values:", v, r, s)
+
+// 	// //address, err := recoverPlain(hs.Hash(tx), r, s, v, true)
+// 	// log.Println("Recovered address:", address, "Error:", err)
+// 	// return recoverPlain(hs.Hash(tx), r, s, v, true)
+
+// 	//return address, err
+// }
+
 func (hs HomesteadSigner) Sender(tx *Transaction) (common.Address, error) {
+	fmt.Println("inside HomesteadSigner", tx.ChainId(), tx.Type(), LegacyTxType, tx.Gas())
 	if tx.Type() != LegacyTxType {
 		return common.Address{}, ErrTxTypeNotSupported
 	}
-	log.Println("Sender function called with transaction:", tx)
-	log.Println("Transaction type is not LegacyTxType")
 	v, r, s := tx.RawSignatureValues()
+	fmt.Println("this is v, r, s value", v, r, s)
+	v = new(big.Int).Sub(v, hs.chainIdMul)
+	v.Sub(v, big8)
 	return recoverPlain(hs.Hash(tx), r, s, v, true)
-	// log.Println("Sender function called with transaction:", tx)
+}
 
-	// if tx.Type() != LegacyTxType {
-	// 	log.Println("Transaction type is not LegacyTxType")
-	// 	return common.Address{}, ErrTxTypeNotSupported
-	// }
-
-	// v, r, s := tx.RawSignatureValues()
-	// log.Println("Raw signature values:", v, r, s)
-
-	// //address, err := recoverPlain(hs.Hash(tx), r, s, v, true)
-	// log.Println("Recovered address:", address, "Error:", err)
-	// return recoverPlain(hs.Hash(tx), r, s, v, true)
-
-	//return address, err
+// Hash returns the hash to be signed by the sender.
+// It does not uniquely identify the transaction.
+func (hs HomesteadSigner) Hash(tx *Transaction) common.Hash {
+	return rlpHash([]interface{}{
+		tx.Nonce(),
+		tx.GasPrice(),
+		tx.Gas(),
+		tx.To(),
+		tx.Value(),
+		tx.Data(),
+		hs.chainId, uint(0), uint(0),
+	})
 }
 
 type FrontierSigner struct{}
@@ -506,13 +553,13 @@ func decodeSignature(sig []byte) (r, s, v *big.Int) {
 func recoverPlain(sighash common.Hash, R, S, Vb *big.Int, homestead bool) (common.Address, error) {
 	fmt.Println("Entering recoverPlain function")
 	fmt.Println("vb.bitlen is", Vb.BitLen())
-	if Vb.BitLen() > 10 {
+	if Vb.BitLen() > 8 {
 		return common.Address{}, ErrInvalidSig
 	}
 	fmt.Println("Vb", Vb)
-	V := byte(1)
-	//V := byte(Vb.Uint64() - 55)
-	fmt.Println("V: %v, R: %x, S: %x\n", V, R, S)
+	//V := byte(1)
+	V := byte(Vb.Uint64() - 27)
+	//fmt.Println("V: %v, R: %x, S: %x\n", V, R, S)
 	if !crypto.ValidateSignatureValues(V, R, S, homestead) {
 		return common.Address{}, ErrInvalidSig
 	}
@@ -523,7 +570,7 @@ func recoverPlain(sighash common.Hash, R, S, Vb *big.Int, homestead bool) (commo
 	copy(sig[64-len(s):64], s)
 	sig[64] = V
 
-	fmt.Println("Signature: %x\n", sig)
+	// fmt.Println("Signature: %x\n", sig)
 	// recover the public key from the signature
 	pub, err := crypto.Ecrecover(sighash[:], sig)
 	if err != nil {

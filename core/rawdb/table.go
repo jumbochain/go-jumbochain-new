@@ -80,6 +80,10 @@ func (t *table) Tail() (uint64, error) {
 	return t.db.Tail()
 }
 
+func (t *table) ItemAmountInAncient() (uint64, error) {
+	return t.db.ItemAmountInAncient()
+}
+
 // AncientSize is a noop passthrough that just forwards the request to the underlying
 // database.
 func (t *table) AncientSize(kind string) (uint64, error) {

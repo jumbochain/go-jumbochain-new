@@ -38,6 +38,27 @@ var (
 	EmptyCodeHash  = crypto.Keccak256(nil)
 )
 
+var (
+	// StatusVerified means the processing of request going as expected and found the root correctly.
+	StatusVerified          = VerifyStatus{Code: 0x100}
+	StatusFullVerified      = VerifyStatus{Code: 0x101, Msg: "state root full verified"}
+	StatusPartiallyVerified = VerifyStatus{Code: 0x102, Msg: "state root partially verified, because of difflayer not found"}
+
+	// StatusFailed means the request has something wrong.
+	StatusFailed           = VerifyStatus{Code: 0x200}
+	StatusDiffHashMismatch = VerifyStatus{Code: 0x201, Msg: "verify failed because of blockhash mismatch with diffhash"}
+	StatusImpossibleFork   = VerifyStatus{Code: 0x202, Msg: "verify failed because of impossible fork detected"}
+
+	// StatusUncertain means verify node can't give a certain result of the request.
+	StatusUncertain    = VerifyStatus{Code: 0x300}
+	StatusBlockTooNew  = VerifyStatus{Code: 0x301, Msg: "can’t verify because of block number larger than current height more than 11"}
+	StatusBlockNewer   = VerifyStatus{Code: 0x302, Msg: "can’t verify because of block number larger than current height"}
+	StatusPossibleFork = VerifyStatus{Code: 0x303, Msg: "can’t verify because of possible fork detected"}
+
+	// StatusUnexpectedError is unexpected internal error.
+	StatusUnexpectedError = VerifyStatus{Code: 0x400, Msg: "can’t verify because of unexpected internal error"}
+)
+
 // A BlockNonce is a 64-bit hash which proves (combined with the
 // mix-hash) that a sufficient amount of computation has been carried
 // out on a block.
@@ -438,4 +459,19 @@ type DiffStorage struct {
 	Account common.Address
 	Keys    []string
 	Vals    [][]byte
+}
+
+type ExtDiffLayer struct {
+	BlockHash common.Hash
+	Number    uint64
+	Receipts  []*ReceiptForStorage // Receipts are duplicated stored to simplify the logic
+	Codes     []DiffCode
+	Destructs []common.Address
+	Accounts  []DiffAccount
+	Storages  []DiffStorage
+}
+
+type VerifyStatus struct {
+	Code uint16
+	Msg  string
 }

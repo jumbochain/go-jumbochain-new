@@ -23,6 +23,7 @@ require (
 	github.com/ethereum/c-kzg-4844 v0.3.0
 	github.com/ethereum/go-ethereum v1.12.0
 	github.com/fatih/color v1.9.0
+	github.com/fatih/structs v1.1.0
 	github.com/fjl/gencodec v0.0.0-20230517082657-f9840df7b83e
 	github.com/fjl/memsize v0.0.0-20190710130421-bcb5799ab5e5
 	github.com/gballet/go-libpcsclite v0.0.0-20191108122812-4678299bea08

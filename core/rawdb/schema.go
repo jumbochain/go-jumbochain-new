@@ -27,8 +27,13 @@ import (
 
 // The fields below define the low level database schema prefixing.
 var (
+
+	// difflayer database
+	diffLayerPrefix = []byte("d") // diffLayerPrefix + hash  -> diffLayer
 	// databaseVersionKey tracks the current database version.
 	databaseVersionKey = []byte("DatabaseVersion")
+
+	offSetOfCurrentAncientFreezer = []byte("offSetOfCurrentAncientFreezer")
 
 	// headHeaderKey tracks the latest known header's hash.
 	headHeaderKey = []byte("LastHeader")
@@ -181,6 +186,11 @@ func headerNumberKey(hash common.Hash) []byte {
 // blockBodyKey = blockBodyPrefix + num (uint64 big endian) + hash
 func blockBodyKey(number uint64, hash common.Hash) []byte {
 	return append(append(blockBodyPrefix, encodeBlockNumber(number)...), hash.Bytes()...)
+}
+
+// diffLayerKey = diffLayerKeyPrefix + hash
+func diffLayerKey(hash common.Hash) []byte {
+	return append(diffLayerPrefix, hash.Bytes()...)
 }
 
 // blockReceiptsKey = blockReceiptsPrefix + num (uint64 big endian) + hash

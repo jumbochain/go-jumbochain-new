@@ -18,6 +18,7 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"os"
 	"os/signal"
@@ -36,8 +37,6 @@ import (
 	"jumbochain.org/console/prompt"
 	"jumbochain.org/core/rawdb"
 	"jumbochain.org/core/state/snapshot"
-	"jumbochain.org/core/types"
-	"jumbochain.org/crypto"
 	"jumbochain.org/ethdb"
 	"jumbochain.org/log"
 	"jumbochain.org/trie"
@@ -49,8 +48,10 @@ var (
 		Name:      "removedb",
 		Usage:     "Remove blockchain and state databases",
 		ArgsUsage: "",
-		Flags:     utils.DatabasePathFlags,
-		Category:  "DATABASE COMMANDS",
+		Flags: []cli.Flag{
+			utils.DataDirFlag,
+		},
+		Category: "DATABASE COMMANDS",
 		Description: `
 Remove blockchain and state databases`,
 	}
@@ -71,47 +72,43 @@ Remove blockchain and state databases`,
 			dbImportCmd,
 			dbExportCmd,
 			dbMetadataCmd,
-			dbMigrateFreezerCmd,
-			dbCheckStateContentCmd,
+			ancientInspectCmd,
 		},
 	}
 	dbInspectCmd = cli.Command{
 		Action:    utils.MigrateFlags(inspect),
 		Name:      "inspect",
 		ArgsUsage: "<prefix> <start>",
-		Flags: utils.GroupFlags([]cli.Flag{
+		Flags: []cli.Flag{
+			utils.DataDirFlag,
+			utils.AncientFlag,
 			utils.SyncModeFlag,
-		}, utils.NetworkFlags, utils.DatabasePathFlags),
+			utils.MainnetFlag,
+		},
 		Usage:       "Inspect the storage size for each type of data in the database",
 		Description: `This commands iterates the entire database. If the optional 'prefix' and 'start' arguments are provided, then the iteration is limited to the given subset of data.`,
-	}
-	dbCheckStateContentCmd = cli.Command{
-		Action:    utils.MigrateFlags(checkStateContent),
-		Name:      "check-state-content",
-		ArgsUsage: "<start (optional)>",
-		Flags:     utils.GroupFlags(utils.NetworkFlags, utils.DatabasePathFlags),
-		Usage:     "Verify that state data is cryptographically correct",
-		Description: `This command iterates the entire database for 32-byte keys, looking for rlp-encoded trie nodes.
-For each trie node encountered, it checks that the key corresponds to the keccak256(value). If this is not true, this indicates
-a data corruption.`,
 	}
 	dbStatCmd = cli.Command{
 		Action: utils.MigrateFlags(dbStats),
 		Name:   "stats",
 		Usage:  "Print leveldb statistics",
-		Flags: utils.GroupFlags([]cli.Flag{
+		Flags: []cli.Flag{
+			utils.DataDirFlag,
 			utils.SyncModeFlag,
-		}, utils.NetworkFlags, utils.DatabasePathFlags),
+			utils.MainnetFlag,
+		},
 	}
 	dbCompactCmd = cli.Command{
 		Action: utils.MigrateFlags(dbCompact),
 		Name:   "compact",
 		Usage:  "Compact leveldb database. WARNING: May take a very long time",
-		Flags: utils.GroupFlags([]cli.Flag{
+		Flags: []cli.Flag{
+			utils.DataDirFlag,
 			utils.SyncModeFlag,
+			utils.MainnetFlag,
 			utils.CacheFlag,
 			utils.CacheDatabaseFlag,
-		}, utils.NetworkFlags, utils.DatabasePathFlags),
+		},
 		Description: `This command performs a database compaction. 
 WARNING: This operation may take a very long time to finish, and may cause database
 corruption if it is aborted during execution'!`,
@@ -121,9 +118,11 @@ corruption if it is aborted during execution'!`,
 		Name:      "get",
 		Usage:     "Show the value of a database key",
 		ArgsUsage: "<hex-encoded key>",
-		Flags: utils.GroupFlags([]cli.Flag{
+		Flags: []cli.Flag{
+			utils.DataDirFlag,
 			utils.SyncModeFlag,
-		}, utils.NetworkFlags, utils.DatabasePathFlags),
+			utils.MainnetFlag,
+		},
 		Description: "This command looks up the specified database key from the database.",
 	}
 	dbDeleteCmd = cli.Command{
@@ -131,9 +130,11 @@ corruption if it is aborted during execution'!`,
 		Name:      "delete",
 		Usage:     "Delete a database key (WARNING: may corrupt your database)",
 		ArgsUsage: "<hex-encoded key>",
-		Flags: utils.GroupFlags([]cli.Flag{
+		Flags: []cli.Flag{
+			utils.DataDirFlag,
 			utils.SyncModeFlag,
-		}, utils.NetworkFlags, utils.DatabasePathFlags),
+			utils.MainnetFlag,
+		},
 		Description: `This command deletes the specified database key from the database. 
 WARNING: This is a low-level operation which may cause database corruption!`,
 	}
@@ -142,9 +143,11 @@ WARNING: This is a low-level operation which may cause database corruption!`,
 		Name:      "put",
 		Usage:     "Set the value of a database key (WARNING: may corrupt your database)",
 		ArgsUsage: "<hex-encoded key> <hex-encoded value>",
-		Flags: utils.GroupFlags([]cli.Flag{
+		Flags: []cli.Flag{
+			utils.DataDirFlag,
 			utils.SyncModeFlag,
-		}, utils.NetworkFlags, utils.DatabasePathFlags),
+			utils.MainnetFlag,
+		},
 		Description: `This command sets a given database key to the given value. 
 WARNING: This is a low-level operation which may cause database corruption!`,
 	}
@@ -153,9 +156,11 @@ WARNING: This is a low-level operation which may cause database corruption!`,
 		Name:      "dumptrie",
 		Usage:     "Show the storage key/values of a given storage trie",
 		ArgsUsage: "<hex-encoded storage trie root> <hex-encoded start (optional)> <int max elements (optional)>",
-		Flags: utils.GroupFlags([]cli.Flag{
+		Flags: []cli.Flag{
+			utils.DataDirFlag,
 			utils.SyncModeFlag,
-		}, utils.NetworkFlags, utils.DatabasePathFlags),
+			utils.MainnetFlag,
+		},
 		Description: "This command looks up the specified database key from the database.",
 	}
 	dbDumpFreezerIndex = cli.Command{
@@ -163,9 +168,11 @@ WARNING: This is a low-level operation which may cause database corruption!`,
 		Name:      "freezer-index",
 		Usage:     "Dump out the index of a given freezer type",
 		ArgsUsage: "<type> <start (int)> <end (int)>",
-		Flags: utils.GroupFlags([]cli.Flag{
+		Flags: []cli.Flag{
+			utils.DataDirFlag,
 			utils.SyncModeFlag,
-		}, utils.NetworkFlags, utils.DatabasePathFlags),
+			utils.MainnetFlag,
+		},
 		Description: "This command displays information about the freezer index.",
 	}
 	dbImportCmd = cli.Command{
@@ -173,9 +180,11 @@ WARNING: This is a low-level operation which may cause database corruption!`,
 		Name:      "import",
 		Usage:     "Imports leveldb-data from an exported RLP dump.",
 		ArgsUsage: "<dumpfile> <start (optional)",
-		Flags: utils.GroupFlags([]cli.Flag{
+		Flags: []cli.Flag{
+			utils.DataDirFlag,
 			utils.SyncModeFlag,
-		}, utils.NetworkFlags, utils.DatabasePathFlags),
+			utils.MainnetFlag,
+		},
 		Description: "The import command imports the specific chain data from an RLP encoded stream.",
 	}
 	dbExportCmd = cli.Command{
@@ -183,30 +192,33 @@ WARNING: This is a low-level operation which may cause database corruption!`,
 		Name:      "export",
 		Usage:     "Exports the chain data into an RLP dump. If the <dumpfile> has .gz suffix, gzip compression will be used.",
 		ArgsUsage: "<type> <dumpfile>",
-		Flags: utils.GroupFlags([]cli.Flag{
+		Flags: []cli.Flag{
+			utils.DataDirFlag,
 			utils.SyncModeFlag,
-		}, utils.NetworkFlags, utils.DatabasePathFlags),
+			utils.MainnetFlag,
+		},
 		Description: "Exports the specified chain data to an RLP encoded stream, optionally gzip-compressed.",
 	}
 	dbMetadataCmd = cli.Command{
 		Action: utils.MigrateFlags(showMetaData),
 		Name:   "metadata",
 		Usage:  "Shows metadata about the chain status.",
-		Flags: utils.GroupFlags([]cli.Flag{
+		Flags: []cli.Flag{
+			utils.DataDirFlag,
 			utils.SyncModeFlag,
-		}, utils.NetworkFlags, utils.DatabasePathFlags),
+			utils.MainnetFlag,
+		},
 		Description: "Shows metadata about the chain status.",
 	}
-	dbMigrateFreezerCmd = cli.Command{
-		Action:    utils.MigrateFlags(freezerMigrate),
-		Name:      "freezer-migrate",
-		Usage:     "Migrate legacy parts of the freezer. (WARNING: may take a long time)",
-		ArgsUsage: "",
-		Flags: utils.GroupFlags([]cli.Flag{
-			utils.SyncModeFlag,
-		}, utils.NetworkFlags, utils.DatabasePathFlags),
-		Description: `The freezer-migrate command checks your database for receipts in a legacy format and updates those.
-WARNING: please back-up the receipt files in your ancients before running this command.`,
+	ancientInspectCmd = cli.Command{
+		Action: utils.MigrateFlags(ancientInspect),
+		Name:   "inspect-reserved-oldest-blocks",
+		Flags: []cli.Flag{
+			utils.DataDirFlag,
+		},
+		Usage: "Inspect the ancientStore information",
+		Description: `This commands will read current offset from kvdb, which is the current offset and starting BlockNumber
+of ancientStore, will also displays the reserved number of blocks in ancientStore `,
 	}
 )
 
@@ -295,67 +307,22 @@ func inspect(ctx *cli.Context) error {
 	stack, _ := makeConfigNode(ctx)
 	defer stack.Close()
 
-	db := utils.MakeChainDatabase(ctx, stack, true)
+	db := utils.MakeChainDatabase(ctx, stack, true, false)
 	defer db.Close()
 
 	return rawdb.InspectDatabase(db, prefix, start)
 }
 
-func checkStateContent(ctx *cli.Context) error {
-	var (
-		prefix []byte
-		start  []byte
-	)
-	if ctx.NArg() > 1 {
-		return fmt.Errorf("max 1 argument: %v", ctx.Command.ArgsUsage)
-	}
-	if ctx.NArg() > 0 {
-		if d, err := hexutil.Decode(ctx.Args().First()); err != nil {
-			return fmt.Errorf("failed to hex-decode 'start': %v", err)
-		} else {
-			start = d
-		}
-	}
+func ancientInspect(ctx *cli.Context) error {
 	stack, _ := makeConfigNode(ctx)
 	defer stack.Close()
 
-	db := utils.MakeChainDatabase(ctx, stack, true)
+	db := utils.MakeChainDatabase(ctx, stack, true, true)
 	defer db.Close()
-	var (
-		it        = rawdb.NewKeyLengthIterator(db.NewIterator(prefix, start), 32)
-		hasher    = crypto.NewKeccakState()
-		got       = make([]byte, 32)
-		errs      int
-		count     int
-		startTime = time.Now()
-		lastLog   = time.Now()
-	)
-	for it.Next() {
-		count++
-		k := it.Key()
-		v := it.Value()
-		hasher.Reset()
-		hasher.Write(v)
-		hasher.Read(got)
-		if !bytes.Equal(k, got) {
-			errs++
-			fmt.Printf("Error at 0x%x\n", k)
-			fmt.Printf("  Hash:  0x%x\n", got)
-			fmt.Printf("  Data:  0x%x\n", v)
-		}
-		if time.Since(lastLog) > 8*time.Second {
-			log.Info("Iterating the database", "at", fmt.Sprintf("%#x", k), "elapsed", common.PrettyDuration(time.Since(startTime)))
-			lastLog = time.Now()
-		}
-	}
-	if err := it.Error(); err != nil {
-		return err
-	}
-	log.Info("Iterated the state content", "errors", errs, "items", count)
-	return nil
+	return rawdb.AncientInspect(db)
 }
 
-func showLeveldbStats(db ethdb.KeyValueStater) {
+func showLeveldbStats(db ethdb.Stater) {
 	if stats, err := db.Stat("leveldb.stats"); err != nil {
 		log.Warn("Failed to read database stats", "error", err)
 	} else {
@@ -372,7 +339,7 @@ func dbStats(ctx *cli.Context) error {
 	stack, _ := makeConfigNode(ctx)
 	defer stack.Close()
 
-	db := utils.MakeChainDatabase(ctx, stack, true)
+	db := utils.MakeChainDatabase(ctx, stack, true, false)
 	defer db.Close()
 
 	showLeveldbStats(db)
@@ -383,7 +350,7 @@ func dbCompact(ctx *cli.Context) error {
 	stack, _ := makeConfigNode(ctx)
 	defer stack.Close()
 
-	db := utils.MakeChainDatabase(ctx, stack, false)
+	db := utils.MakeChainDatabase(ctx, stack, false, false)
 	defer db.Close()
 
 	log.Info("Stats before compaction")
@@ -407,10 +374,10 @@ func dbGet(ctx *cli.Context) error {
 	stack, _ := makeConfigNode(ctx)
 	defer stack.Close()
 
-	db := utils.MakeChainDatabase(ctx, stack, true)
+	db := utils.MakeChainDatabase(ctx, stack, true, false)
 	defer db.Close()
 
-	key, err := common.ParseHexOrString(ctx.Args().Get(0))
+	key, err := parseHexOrString(ctx.Args().Get(0))
 	if err != nil {
 		log.Info("Could not decode the key", "error", err)
 		return err
@@ -433,10 +400,10 @@ func dbDelete(ctx *cli.Context) error {
 	stack, _ := makeConfigNode(ctx)
 	defer stack.Close()
 
-	db := utils.MakeChainDatabase(ctx, stack, false)
+	db := utils.MakeChainDatabase(ctx, stack, false, false)
 	defer db.Close()
 
-	key, err := common.ParseHexOrString(ctx.Args().Get(0))
+	key, err := parseHexOrString(ctx.Args().Get(0))
 	if err != nil {
 		log.Info("Could not decode the key", "error", err)
 		return err
@@ -460,7 +427,7 @@ func dbPut(ctx *cli.Context) error {
 	stack, _ := makeConfigNode(ctx)
 	defer stack.Close()
 
-	db := utils.MakeChainDatabase(ctx, stack, false)
+	db := utils.MakeChainDatabase(ctx, stack, false, false)
 	defer db.Close()
 
 	var (
@@ -469,7 +436,7 @@ func dbPut(ctx *cli.Context) error {
 		data  []byte
 		err   error
 	)
-	key, err = common.ParseHexOrString(ctx.Args().Get(0))
+	key, err = parseHexOrString(ctx.Args().Get(0))
 	if err != nil {
 		log.Info("Could not decode the key", "error", err)
 		return err
@@ -494,7 +461,7 @@ func dbDumpTrie(ctx *cli.Context) error {
 	stack, _ := makeConfigNode(ctx)
 	defer stack.Close()
 
-	db := utils.MakeChainDatabase(ctx, stack, true)
+	db := utils.MakeChainDatabase(ctx, stack, true, false)
 	defer db.Close()
 	var (
 		root  []byte
@@ -576,6 +543,15 @@ func freezerInspect(ctx *cli.Context) error {
 	return nil
 }
 
+// ParseHexOrString tries to hexdecode b, but if the prefix is missing, it instead just returns the raw bytes
+func parseHexOrString(str string) ([]byte, error) {
+	b, err := hexutil.Decode(str)
+	if errors.Is(err, hexutil.ErrMissingPrefix) {
+		return []byte(str), nil
+	}
+	return b, err
+}
+
 func importLDBdata(ctx *cli.Context) error {
 	start := 0
 	switch ctx.NArg() {
@@ -606,7 +582,7 @@ func importLDBdata(ctx *cli.Context) error {
 		}
 		close(stop)
 	}()
-	db := utils.MakeChainDatabase(ctx, stack, false)
+	db := utils.MakeChainDatabase(ctx, stack, false, false)
 	return utils.ImportLDBData(db, fName, int64(start), stop)
 }
 
@@ -702,14 +678,14 @@ func exportChaindata(ctx *cli.Context) error {
 		}
 		close(stop)
 	}()
-	db := utils.MakeChainDatabase(ctx, stack, true)
+	db := utils.MakeChainDatabase(ctx, stack, true, false)
 	return utils.ExportChaindata(ctx.Args().Get(1), kind, exporter(db), stop)
 }
 
 func showMetaData(ctx *cli.Context) error {
 	stack, _ := makeConfigNode(ctx)
 	defer stack.Close()
-	db := utils.MakeChainDatabase(ctx, stack, true)
+	db := utils.MakeChainDatabase(ctx, stack, true, false)
 	ancients, err := db.Ancients()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error accessing ancients: %v", err)
@@ -729,9 +705,6 @@ func showMetaData(ctx *cli.Context) error {
 		data = append(data, []string{"headBlock.Hash", fmt.Sprintf("%v", b.Hash())})
 		data = append(data, []string{"headBlock.Root", fmt.Sprintf("%v", b.Root())})
 		data = append(data, []string{"headBlock.Number", fmt.Sprintf("%d (0x%x)", b.Number(), b.Number())})
-	}
-	if b := rawdb.ReadSkeletonSyncStatus(db); b != nil {
-		data = append(data, []string{"SkeletonSyncStatus", string(b)})
 	}
 	if h := rawdb.ReadHeadHeader(db); h != nil {
 		data = append(data, []string{"headHeader.Hash", fmt.Sprintf("%v", h.Hash())})
@@ -754,89 +727,4 @@ func showMetaData(ctx *cli.Context) error {
 	table.AppendBulk(data)
 	table.Render()
 	return nil
-}
-
-func freezerMigrate(ctx *cli.Context) error {
-	stack, _ := makeConfigNode(ctx)
-	defer stack.Close()
-
-	db := utils.MakeChainDatabase(ctx, stack, false)
-	defer db.Close()
-
-	// Check first block for legacy receipt format
-	numAncients, err := db.Ancients()
-	if err != nil {
-		return err
-	}
-	if numAncients < 1 {
-		log.Info("No receipts in freezer to migrate")
-		return nil
-	}
-
-	isFirstLegacy, firstIdx, err := dbHasLegacyReceipts(db, 0)
-	if err != nil {
-		return err
-	}
-	if !isFirstLegacy {
-		log.Info("No legacy receipts to migrate")
-		return nil
-	}
-
-	log.Info("Starting migration", "ancients", numAncients, "firstLegacy", firstIdx)
-	start := time.Now()
-	if err := db.MigrateTable("receipts", types.ConvertLegacyStoredReceipts); err != nil {
-		return err
-	}
-	if err := db.Close(); err != nil {
-		return err
-	}
-	log.Info("Migration finished", "duration", time.Since(start))
-
-	return nil
-}
-
-// dbHasLegacyReceipts checks freezer entries for legacy receipts. It stops at the first
-// non-empty receipt and checks its format. The index of this first non-empty element is
-// the second return parameter.
-func dbHasLegacyReceipts(db ethdb.Database, firstIdx uint64) (bool, uint64, error) {
-	// Check first block for legacy receipt format
-	numAncients, err := db.Ancients()
-	if err != nil {
-		return false, 0, err
-	}
-	if numAncients < 1 {
-		return false, 0, nil
-	}
-	if firstIdx >= numAncients {
-		return false, firstIdx, nil
-	}
-	var (
-		legacy       bool
-		blob         []byte
-		emptyRLPList = []byte{192}
-	)
-	// Find first block with non-empty receipt, only if
-	// the index is not already provided.
-	if firstIdx == 0 {
-		for i := uint64(0); i < numAncients; i++ {
-			blob, err = db.Ancient("receipts", i)
-			if err != nil {
-				return false, 0, err
-			}
-			if len(blob) == 0 {
-				continue
-			}
-			if !bytes.Equal(blob, emptyRLPList) {
-				firstIdx = i
-				break
-			}
-		}
-	}
-	// Is first non-empty receipt legacy?
-	first, err := db.Ancient("receipts", firstIdx)
-	if err != nil {
-		return false, 0, err
-	}
-	legacy, err = types.IsLegacyStoredReceipts(first)
-	return legacy, firstIdx, err
 }

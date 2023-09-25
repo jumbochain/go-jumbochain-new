@@ -45,7 +45,7 @@ import (
 type EthAPIBackend struct {
 	extRPCEnabled       bool
 	allowUnprotectedTxs bool
-	eth                 *Ethereum
+	eth                 *Jumbochain
 	gpo                 *gasprice.Oracle
 }
 

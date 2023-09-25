@@ -32,7 +32,7 @@ import (
 )
 
 // / Register adds catalyst APIs to the full node.
-func Register(stack *node.Node, backend *eth.Ethereum) error {
+func Register(stack *node.Node, backend *eth.Jumbochain) error {
 	log.Warn("Catalyst mode enabled", "protocol", "eth")
 	stack.RegisterAPIs([]rpc.API{
 		{
@@ -46,13 +46,13 @@ func Register(stack *node.Node, backend *eth.Ethereum) error {
 }
 
 type ConsensusAPI struct {
-	eth            *eth.Ethereum
+	eth            *eth.Jumbochain
 	preparedBlocks *payloadQueue // preparedBlocks caches payloads (*ExecutableDataV1) by payload ID (PayloadID)
 }
 
 // NewConsensusAPI creates a new consensus api for the given backend.
 // The underlying blockchain needs to have a valid terminal total difficulty set.
-func NewConsensusAPI(eth *eth.Ethereum) *ConsensusAPI {
+func NewConsensusAPI(eth *eth.Jumbochain) *ConsensusAPI {
 	if eth.BlockChain().Config().TerminalTotalDifficulty == nil {
 		panic("Catalyst started without valid total difficulty")
 	}

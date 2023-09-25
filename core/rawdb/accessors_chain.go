@@ -1002,3 +1002,20 @@ func ReadHeadBlock(db ethdb.Reader) *types.Block {
 	}
 	return ReadBlock(db, headBlockHash, *headBlockNumber)
 }
+func ReadDiffLayer(db ethdb.KeyValueReader, blockHash common.Hash) *types.DiffLayer {
+	data := ReadDiffLayerRLP(db, blockHash)
+	if len(data) == 0 {
+		return nil
+	}
+	diff := new(types.DiffLayer)
+	if err := rlp.Decode(bytes.NewReader(data), diff); err != nil {
+		log.Error("Invalid diff layer RLP", "hash", blockHash, "err", err)
+		return nil
+	}
+	return diff
+}
+
+func ReadDiffLayerRLP(db ethdb.KeyValueReader, blockHash common.Hash) rlp.RawValue {
+	data, _ := db.Get(diffLayerKey(blockHash))
+	return data
+}

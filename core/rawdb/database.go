@@ -99,6 +99,10 @@ func (db *nofreezedb) Ancients() (uint64, error) {
 	return 0, errNotSupported
 }
 
+func (db *nofreezedb) ItemAmountInAncient() (uint64, error) {
+	return 0, errNotSupported
+}
+
 // Tail returns an error as we don't have a backing chain freezer.
 func (db *nofreezedb) Tail() (uint64, error) {
 	return 0, errNotSupported
@@ -487,6 +491,36 @@ func InspectDatabase(db ethdb.Database, keyPrefix, keyStart []byte) error {
 	if unaccounted.size > 0 {
 		log.Error("Database contains unaccounted data", "size", unaccounted.size, "count", unaccounted.count)
 	}
+
+	return nil
+}
+
+func AncientInspect(db ethdb.Database) error {
+	offset := counter(ReadOffSetOfCurrentAncientFreezer(db))
+	// Get number of ancient rows inside the freezer.
+	ancients := counter(0)
+	if count, err := db.ItemAmountInAncient(); err != nil {
+		log.Error("failed to get the items amount in ancientDB", "err", err)
+		return err
+	} else {
+		ancients = counter(count)
+	}
+	var endNumber counter
+	if offset+ancients <= 0 {
+		endNumber = 0
+	} else {
+		endNumber = offset + ancients - 1
+	}
+	stats := [][]string{
+		{"Offset/StartBlockNumber", "Offset/StartBlockNumber of ancientDB", offset.String()},
+		{"Amount of remained items in AncientStore", "Remaining items of ancientDB", ancients.String()},
+		{"The last BlockNumber within ancientDB", "The last BlockNumber", endNumber.String()},
+	}
+	table := tablewriter.NewWriter(os.Stdout)
+	table.SetHeader([]string{"Database", "Category", "Items"})
+	table.SetFooter([]string{"", "AncientStore information", ""})
+	table.AppendBulk(stats)
+	table.Render()
 
 	return nil
 }

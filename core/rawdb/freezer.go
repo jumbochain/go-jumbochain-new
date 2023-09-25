@@ -79,6 +79,7 @@ type Freezer struct {
 	tables       map[string]*freezerTable // Data tables for storing everything
 	instanceLock fileutil.Releaser        // File-system lock to prevent double opens
 	closeOnce    sync.Once
+	offset       uint64
 }
 
 // NewFreezer creates a freezer instance for maintaining immutable ordered
@@ -204,6 +205,10 @@ func (f *Freezer) AncientRange(kind string, start, count, maxBytes uint64) ([][]
 // Ancients returns the length of the frozen items.
 func (f *Freezer) Ancients() (uint64, error) {
 	return atomic.LoadUint64(&f.frozen), nil
+}
+
+func (f *Freezer) ItemAmountInAncient() (uint64, error) {
+	return atomic.LoadUint64(&f.frozen) - atomic.LoadUint64(&f.offset), nil
 }
 
 // Tail returns the number of first stored item in the freezer.

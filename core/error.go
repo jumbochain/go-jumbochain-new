@@ -94,6 +94,8 @@ var (
 	// the base fee of the block.
 	ErrFeeCapTooLow = errors.New("max fee per gas less than block base fee")
 
+	ErrCurrentBlockNotFound = errors.New("current block not found")
+
 	// ErrSenderNoEOA is returned if the sender of a transaction is a contract.
 	ErrSenderNoEOA = errors.New("sender not an eoa")
 )

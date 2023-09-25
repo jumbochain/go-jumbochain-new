@@ -18,6 +18,7 @@ package rawdb
 
 import (
 	"encoding/json"
+	"math/big"
 	"time"
 
 	"jumbochain.org/common"
@@ -40,6 +41,15 @@ func ReadDatabaseVersion(db ethdb.KeyValueReader) *uint64 {
 	}
 
 	return &version
+}
+
+// ReadOffSetOfCurrentAncientFreezer return prune block start
+func ReadOffSetOfCurrentAncientFreezer(db ethdb.KeyValueReader) uint64 {
+	offset, _ := db.Get(offSetOfCurrentAncientFreezer)
+	if offset == nil {
+		return 0
+	}
+	return new(big.Int).SetBytes(offset).Uint64()
 }
 
 // WriteDatabaseVersion stores the version number of the database

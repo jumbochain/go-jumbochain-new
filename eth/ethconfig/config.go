@@ -30,10 +30,12 @@ import (
 	"jumbochain.org/consensus/beacon"
 	"jumbochain.org/consensus/clique"
 	"jumbochain.org/consensus/ethash"
+	"jumbochain.org/consensus/jumbo"
 	"jumbochain.org/core"
 	"jumbochain.org/eth/downloader"
 	"jumbochain.org/eth/gasprice"
 	"jumbochain.org/ethdb"
+	"jumbochain.org/internal/ethapi"
 	"jumbochain.org/log"
 	"jumbochain.org/miner"
 	"jumbochain.org/node"
@@ -169,6 +171,7 @@ type Config struct {
 	TrieCleanCacheRejournal time.Duration `toml:",omitempty"` // Time interval to regenerate the journal for clean cache
 	TrieDirtyCache          int
 	TrieTimeout             time.Duration
+	TriesVerifyMode         core.VerifyMode
 	SnapshotCache           int
 	Preimages               bool
 
@@ -214,8 +217,11 @@ type Config struct {
 }
 
 // CreateConsensusEngine creates a consensus engine for the given chain configuration.
-func CreateConsensusEngine(stack *node.Node, chainConfig *params.ChainConfig, config *ethash.Config, notify []string, noverify bool, db ethdb.Database) consensus.Engine {
+func CreateConsensusEngine(stack *node.Node, chainConfig *params.ChainConfig, config *ethash.Config, notify []string, noverify bool, db ethdb.Database, ee *ethapi.PublicBlockChainAPI, genesisHash common.Hash) consensus.Engine {
 	// If proof-of-authority is requested, set it up
+	if chainConfig.JumboConsensus != nil {
+		return jumbo.New(chainConfig, db, ee, genesisHash)
+	}
 	var engine consensus.Engine
 	if chainConfig.Clique != nil {
 		engine = clique.New(chainConfig.Clique, db)

@@ -257,16 +257,16 @@ var (
 	//
 	// This configuration is intentionally not using keyed fields to force anyone
 	// adding flags to the config to also have to set these fields.
-	AllEthashProtocolChanges = &ChainConfig{big.NewInt(129), big.NewInt(0), nil, nil, &JumboConsensusConfig{Period: 15, Epoch: 3000}}
+	AllEthashProtocolChanges = &ChainConfig{big.NewInt(129), big.NewInt(0), big.NewInt(0), nil, nil, &JumboConsensusConfig{Period: 15, Epoch: 3000}}
 
 	// AllCliqueProtocolChanges contains every protocol change (EIPs) introduced
 	// and accepted by the Ethereum core developers into the Clique consensus.
 	//
 	// This configuration is intentionally not using keyed fields to force anyone
 	// adding flags to the config to also have to set these fields.
-	AllCliqueProtocolChanges = &ChainConfig{big.NewInt(10), big.NewInt(0), nil, &CliqueConfig{Period: 0, Epoch: 30000}, nil}
+	AllCliqueProtocolChanges = &ChainConfig{big.NewInt(10), big.NewInt(0), big.NewInt(0), nil, &CliqueConfig{Period: 0, Epoch: 30000}, nil}
 
-	TestChainConfig = &ChainConfig{big.NewInt(1), big.NewInt(0), new(EthashConfig), nil, nil}
+	TestChainConfig = &ChainConfig{big.NewInt(1), big.NewInt(0), big.NewInt(0), new(EthashConfig), nil, nil}
 	TestRules       = TestChainConfig.Rules(new(big.Int), false)
 )
 
@@ -326,7 +326,7 @@ type CheckpointOracleConfig struct {
 type ChainConfig struct {
 	ChainID *big.Int `json:"chainId"` // chainId identifies the current chain and is used for replay protection
 
-	// HomesteadBlock *big.Int `json:"homesteadBlock,omitempty"` // Homestead switch block (nil = no fork, 0 = already homestead)
+	HomesteadBlock *big.Int `json:"homesteadBlock,omitempty"` // Homestead switch block (nil = no fork, 0 = already homestead)
 
 	// DAOForkBlock   *big.Int `json:"daoForkBlock,omitempty"`   // TheDAO hard-fork switch block (nil = no fork)
 	// DAOForkSupport bool     `json:"daoForkSupport,omitempty"` // Whether the nodes supports or opposes the DAO hard-fork
@@ -390,9 +390,9 @@ func (c *ChainConfig) String() string {
 	default:
 		engine = "unknown"
 	}
-	return fmt.Sprintf("{ChainID: %v, Engine: %v}",
+	return fmt.Sprintf("{ChainID: %v Homestead: %v Engine: %v}",
 		c.ChainID,
-		// c.HomesteadBlock,
+		c.HomesteadBlock,
 		// c.DAOForkBlock,
 		// c.DAOForkSupport,
 		// c.EIP150Block,
@@ -413,9 +413,9 @@ func (c *ChainConfig) String() string {
 }
 
 // // IsHomestead returns whether num is either equal to the homestead block or greater.
-// func (c *ChainConfig) IsHomestead(num *big.Int) bool {
-// 	return isForked(c.HomesteadBlock, num)
-// }
+func (c *ChainConfig) IsHomestead(num *big.Int) bool {
+	return isForked(c.HomesteadBlock, num)
+}
 
 // // IsDAOFork returns whether num is either equal to the DAO fork block or greater.
 // func (c *ChainConfig) IsDAOFork(num *big.Int) bool {
@@ -562,9 +562,9 @@ func (c *ChainConfig) CheckConfigForkOrder() error {
 }
 
 func (c *ChainConfig) checkCompatible(newcfg *ChainConfig, head *big.Int) *ConfigCompatError {
-	// if isForkIncompatible(c.HomesteadBlock, newcfg.HomesteadBlock, head) {
-	// 	return newCompatError("Homestead fork block", c.HomesteadBlock, newcfg.HomesteadBlock)
-	// }
+	if isForkIncompatible(c.HomesteadBlock, newcfg.HomesteadBlock, head) {
+		return newCompatError("Homestead fork block", c.HomesteadBlock, newcfg.HomesteadBlock)
+	}
 	// if isForkIncompatible(c.DAOForkBlock, newcfg.DAOForkBlock, head) {
 	// 	return newCompatError("DAO fork block", c.DAOForkBlock, newcfg.DAOForkBlock)
 	// }
@@ -619,27 +619,27 @@ func (c *ChainConfig) checkCompatible(newcfg *ChainConfig, head *big.Int) *Confi
 
 // isForkIncompatible returns true if a fork scheduled at s1 cannot be rescheduled to
 // block s2 because head is already past the fork.
-// func isForkIncompatible(s1, s2, head *big.Int) bool {
-// 	return (isForked(s1, head) || isForked(s2, head)) && !configNumEqual(s1, s2)
-// }
+func isForkIncompatible(s1, s2, head *big.Int) bool {
+	return (isForked(s1, head) || isForked(s2, head)) && !configNumEqual(s1, s2)
+}
 
 // isForked returns whether a fork scheduled at block s is active at the given head block.
-// func isForked(s, head *big.Int) bool {
-// 	if s == nil || head == nil {
-// 		return false
-// 	}
-// 	return s.Cmp(head) <= 0
-// }
+func isForked(s, head *big.Int) bool {
+	if s == nil || head == nil {
+		return false
+	}
+	return s.Cmp(head) <= 0
+}
 
-// func configNumEqual(x, y *big.Int) bool {
-// 	if x == nil {
-// 		return y == nil
-// 	}
-// 	if y == nil {
-// 		return x == nil
-// 	}
-// 	return x.Cmp(y) == 0
-// }
+func configNumEqual(x, y *big.Int) bool {
+	if x == nil {
+		return y == nil
+	}
+	if y == nil {
+		return x == nil
+	}
+	return x.Cmp(y) == 0
+}
 
 // ConfigCompatError is raised if the locally-stored blockchain is initialised with a
 // ChainConfig that would alter the past.
@@ -651,22 +651,22 @@ type ConfigCompatError struct {
 	RewindTo uint64
 }
 
-// func newCompatError(what string, storedblock, newblock *big.Int) *ConfigCompatError {
-// 	var rew *big.Int
-// 	switch {
-// 	case storedblock == nil:
-// 		rew = newblock
-// 	case newblock == nil || storedblock.Cmp(newblock) < 0:
-// 		rew = storedblock
-// 	default:
-// 		rew = newblock
-// 	}
-// 	err := &ConfigCompatError{what, storedblock, newblock, 0}
-// 	if rew != nil && rew.Sign() > 0 {
-// 		err.RewindTo = rew.Uint64() - 1
-// 	}
-// 	return err
-// }
+func newCompatError(what string, storedblock, newblock *big.Int) *ConfigCompatError {
+	var rew *big.Int
+	switch {
+	case storedblock == nil:
+		rew = newblock
+	case newblock == nil || storedblock.Cmp(newblock) < 0:
+		rew = storedblock
+	default:
+		rew = newblock
+	}
+	err := &ConfigCompatError{what, storedblock, newblock, 0}
+	if rew != nil && rew.Sign() > 0 {
+		err.RewindTo = rew.Uint64() - 1
+	}
+	return err
+}
 
 func (err *ConfigCompatError) Error() string {
 	return fmt.Sprintf("mismatching %s in database (have %d, want %d, rewindto %d)", err.What, err.StoredConfig, err.NewConfig, err.RewindTo)
@@ -692,8 +692,8 @@ func (c *ChainConfig) Rules(num *big.Int, isMerge bool) Rules {
 		chainID = new(big.Int)
 	}
 	return Rules{
-		ChainID: new(big.Int).Set(chainID),
-		// IsHomestead:      c.IsHomestead(num),
+		ChainID:     new(big.Int).Set(chainID),
+		IsHomestead: c.IsHomestead(num),
 		// IsEIP150:         c.IsEIP150(num),
 		// IsEIP155:         c.IsEIP155(num),
 		// IsEIP158:         c.IsEIP158(num),
