@@ -54,6 +54,9 @@ var (
 	headFastBlockGauge      = metrics.NewRegisteredGauge("chain/head/receipt", nil)
 	headFinalizedBlockGauge = metrics.NewRegisteredGauge("chain/head/finalized", nil)
 
+	justifiedBlockGauge = metrics.NewRegisteredGauge("chain/head/justified", nil)
+	finalizedBlockGauge = metrics.NewRegisteredGauge("chain/head/finalized", nil)
+
 	accountReadTimer   = metrics.NewRegisteredTimer("chain/account/reads", nil)
 	accountHashTimer   = metrics.NewRegisteredTimer("chain/account/hashes", nil)
 	accountUpdateTimer = metrics.NewRegisteredTimer("chain/account/updates", nil)
@@ -94,6 +97,7 @@ const (
 	maxTimeFutureBlocks = 30
 	TriesInMemory       = 128
 	prefetchTxNumber    = 100
+	maxBeyondBlocks        = 2048
 
 	// BlockChainVersion ensures that an incompatible database forces a resync from scratch.
 	//
@@ -569,11 +573,6 @@ func (bc *BlockChain) SetChainHead(newBlock *types.Block) error {
 //
 // The method returns the block number where the requested root cap was found.
 func (bc *BlockChain) setHeadBeyondRoot(head uint64, root common.Hash, repair bool) (uint64, error) {
-	if !bc.chainmu.TryLock() {
-		return 0, errChainStopped
-	}
-	defer bc.chainmu.Unlock()
-
 	// Track the block number of the requested root hash
 	var rootNumber uint64 // (no root == always 0)
 
@@ -588,6 +587,7 @@ func (bc *BlockChain) setHeadBeyondRoot(head uint64, root common.Hash, repair bo
 		// chain reparation mechanism without deleting any data!
 		if currentBlock := bc.CurrentBlock(); currentBlock != nil && header.Number.Uint64() <= currentBlock.NumberU64() {
 			newHeadBlock := bc.GetBlock(header.Hash(), header.Number.Uint64())
+			lastBlockNum := header.Number.Uint64()
 			if newHeadBlock == nil {
 				log.Error("Gap in the chain, rewinding to genesis", "number", header.Number, "hash", header.Hash())
 				newHeadBlock = bc.genesisBlock
@@ -596,12 +596,17 @@ func (bc *BlockChain) setHeadBeyondRoot(head uint64, root common.Hash, repair bo
 				// keeping rewinding until we exceed the optional threshold
 				// root hash
 				beyondRoot := (root == common.Hash{}) // Flag whether we're beyond the requested root (no root, always true)
-
+				enoughBeyondCount := false
+				beyondCount := 0
 				for {
+					beyondCount++
 					// If a root threshold was requested but not yet crossed, check
 					if root != (common.Hash{}) && !beyondRoot && newHeadBlock.Root() == root {
 						beyondRoot, rootNumber = true, newHeadBlock.NumberU64()
 					}
+
+					enoughBeyondCount = beyondCount > maxBeyondBlocks
+
 					if _, err := state.New(newHeadBlock.Root(), bc.stateCache, bc.snaps); err != nil {
 						log.Trace("Block state missing, rewinding further", "number", newHeadBlock.NumberU64(), "hash", newHeadBlock.Hash())
 						if pivot == nil || newHeadBlock.NumberU64() > *pivot {
@@ -617,18 +622,18 @@ func (bc *BlockChain) setHeadBeyondRoot(head uint64, root common.Hash, repair bo
 							newHeadBlock = bc.genesisBlock
 						}
 					}
-					if beyondRoot || newHeadBlock.NumberU64() == 0 {
-						if newHeadBlock.NumberU64() == 0 {
-							// Recommit the genesis state into disk in case the rewinding destination
-							// is genesis block and the relevant state is gone. In the future this
-							// rewinding destination can be the earliest block stored in the chain
-							// if the historical chain pruning is enabled. In that case the logic
-							// needs to be improved here.
-							if !bc.HasState(bc.genesisBlock.Root()) {
-								// if err := CommitGenesisState(bc.db, bc.genesisBlock.Hash()); err != nil {
-								// 	log.Crit("Failed to commit genesis state", "err", err)
-								// }
-								log.Debug("Recommitted genesis state to disk")
+					if beyondRoot || (enoughBeyondCount && root != common.Hash{}) || newHeadBlock.NumberU64() == 0 {
+						if enoughBeyondCount && (root != common.Hash{}) && rootNumber == 0 {
+							for {
+								lastBlockNum++
+								block := bc.GetBlockByNumber(lastBlockNum)
+								if block == nil {
+									break
+								}
+								if block.Root() == root {
+									rootNumber = block.NumberU64()
+									break
+								}
 							}
 						}
 						log.Debug("Rewound to block with state", "number", newHeadBlock.NumberU64(), "hash", newHeadBlock.Hash())
@@ -646,6 +651,8 @@ func (bc *BlockChain) setHeadBeyondRoot(head uint64, root common.Hash, repair bo
 			// to low, so it's safe to update in-memory markers directly.
 			bc.currentBlock.Store(newHeadBlock)
 			headBlockGauge.Update(int64(newHeadBlock.NumberU64()))
+			justifiedBlockGauge.Update(int64(bc.GetJustifiedNumber(newHeadBlock.Header())))
+			finalizedBlockGauge.Update(int64(bc.getFinalizedNumber(newHeadBlock.Header())))
 		}
 		// Rewind the fast block in a simpleton way to the target head
 		if currentFastBlock := bc.CurrentFastBlock(); currentFastBlock != nil && header.Number.Uint64() < currentFastBlock.NumberU64() {
@@ -681,7 +688,7 @@ func (bc *BlockChain) setHeadBeyondRoot(head uint64, root common.Hash, repair bo
 		if num+1 <= frozen {
 			// Truncate all relative data(header, total difficulty, body, receipt
 			// and canonical hash) from ancient store.
-			if err := bc.db.TruncateHead(num); err != nil {
+			if err := bc.db.TruncateAncients(num); err != nil {
 				log.Crit("Failed to truncate ancient data", "number", num, "err", err)
 			}
 			// Remove the hash <-> number mapping from the active store.
@@ -1036,7 +1043,7 @@ func (bc *BlockChain) InsertReceiptChain(blockChain types.Blocks, receiptChain [
 
 		// Rewind may have occurred, skip in that case.
 		if bc.CurrentHeader().Number.Cmp(head.Number()) >= 0 {
-			reorg, err := bc.forker.ReorgNeeded(bc.CurrentFastBlock().Header(), head.Header())
+			reorg, err := bc.forker.ReorgNeededWithFastFinality(bc.CurrentFastBlock().Header(), head.Header())
 			if err != nil {
 				log.Warn("Reorg failed", "err", err)
 				return false
@@ -1113,7 +1120,7 @@ func (bc *BlockChain) InsertReceiptChain(blockChain types.Blocks, receiptChain [
 				size += int64(batch.ValueSize())
 				if err = batch.Write(); err != nil {
 					fastBlock := bc.CurrentFastBlock().NumberU64()
-					if err := bc.db.TruncateHead(fastBlock + 1); err != nil {
+					if err := bc.db.TruncateAncients(fastBlock + 1); err != nil {
 						log.Error("Can't truncate ancient store after failed insert", "err", err)
 					}
 					return 0, err
@@ -1131,7 +1138,7 @@ func (bc *BlockChain) InsertReceiptChain(blockChain types.Blocks, receiptChain [
 		if !updateHead(blockChain[len(blockChain)-1]) {
 			// We end up here if the header chain has reorg'ed, and the blocks/receipts
 			// don't match the canonical chain.
-			if err := bc.db.TruncateHead(previousFastBlock + 1); err != nil {
+			if err := bc.db.TruncateAncients(previousFastBlock + 1); err != nil {
 				log.Error("Can't truncate ancient store after failed insert", "err", err)
 			}
 			return 0, errSideChainReceipts
@@ -1259,7 +1266,6 @@ func (bc *BlockChain) InsertReceiptChain(blockChain types.Blocks, receiptChain [
 
 	return 0, nil
 }
-
 var lastWrite uint64
 
 // writeBlockWithoutState writes only the block and its metadata to the database,
@@ -2617,4 +2623,29 @@ func CalculateDiffHash(d *types.DiffLayer) (common.Hash, error) {
 	var hash common.Hash
 	hasher.Sum(hash[:0])
 	return hash, nil
+}
+
+
+// GetJustifiedNumber returns the highest justified blockNumber on the branch including and before `header`.
+func (bc *BlockChain) GetJustifiedNumber(header *types.Header) uint64 {
+	if p, ok := bc.engine.(consensus.PoSA); ok {
+		justifiedBlockNumber, _, err := p.GetJustifiedNumberAndHash(bc, header)
+		if err == nil {
+			return justifiedBlockNumber
+		}
+	}
+	// return 0 when err!=nil
+	// so the input `header` will at a disadvantage during reorg
+	return 0
+}
+
+// getFinalizedNumber returns the highest finalized number before the specific block.
+func (bc *BlockChain) getFinalizedNumber(header *types.Header) uint64 {
+	if p, ok := bc.engine.(consensus.PoSA); ok {
+		if finalizedHeader := p.GetFinalizedHeader(bc, header); finalizedHeader != nil {
+			return finalizedHeader.Number.Uint64()
+		}
+	}
+
+	return 0
 }

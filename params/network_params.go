@@ -64,4 +64,7 @@ const (
 	// the downloader as a hard limit against deep ancestors, by the blockchain against deep
 	// reorgs, by the light pruner as the pruning validity guarantee.
 	LightImmutabilityThreshold = 30000
+
+	// StableStateThreshold is the reserve number of block state save to disk before delete ancientdb
+	StableStateThreshold uint64 = 128
 )
