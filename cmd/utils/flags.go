@@ -38,6 +38,7 @@ import (
 	pcsclite "github.com/gballet/go-libpcsclite"
 	gopsutil "github.com/shirou/gopsutil/mem"
 	"gopkg.in/urfave/cli.v1"
+
 	"jumbochain.org/accounts"
 	"jumbochain.org/accounts/keystore"
 	"jumbochain.org/common"
@@ -50,6 +51,7 @@ import (
 	"jumbochain.org/core/vm"
 	"jumbochain.org/crypto"
 	"jumbochain.org/eth"
+	ethcatalyst "jumbochain.org/eth/catalyst"
 	"jumbochain.org/eth/downloader"
 	"jumbochain.org/eth/ethconfig"
 	"jumbochain.org/eth/gasprice"
@@ -60,6 +62,7 @@ import (
 	"jumbochain.org/internal/ethapi"
 	"jumbochain.org/internal/flags"
 	"jumbochain.org/les"
+	lescatalyst "jumbochain.org/les/catalyst"
 	"jumbochain.org/log"
 	"jumbochain.org/metrics"
 	"jumbochain.org/metrics/exp"
@@ -1895,7 +1898,7 @@ func SetDNSDiscoveryDefaults(cfg *ethconfig.Config, genesis common.Hash) {
 // RegisterEthService adds an Ethereum client to the stack.
 // The second return value is the full node instance, which may be nil if the
 // node is running as a light client.
-func RegisterEthService(stack *node.Node, cfg *ethconfig.Config) (ethapi.Backend, *eth.Ethereum) {
+func RegisterEthService(stack *node.Node, cfg *ethconfig.Config) (ethapi.Backend, *eth.Jumbochain) {
 	if cfg.SyncMode == downloader.LightSync {
 		backend, err := les.New(stack, cfg)
 		if err != nil {

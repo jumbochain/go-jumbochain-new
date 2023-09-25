@@ -51,6 +51,9 @@ type Config struct {
 	// value is specified, the basename of the current executable is used.
 	Name string `toml:"-"`
 
+	DirectBroadcast     bool `toml:",omitempty"`
+	DisableSnapProtocol bool `toml:",omitempty"`
+
 	// UserIdent, if set, is used as an additional component in the devp2p node identifier.
 	UserIdent string `toml:",omitempty"`
 
@@ -67,6 +70,20 @@ type Config struct {
 
 	// Configuration of peer-to-peer networking.
 	P2P p2p.Config
+
+	// RangeLimit enable 5000 blocks limit when handle range query
+	RangeLimit bool `toml:",omitempty"`
+
+	// BLSPasswordFile is the file that contains BLS wallet password.
+	BLSPasswordFile string `toml:",omitempty"`
+
+	// VoteJournalDir is the directory to store votes in the fast finality feature.
+	VoteJournalDir string `toml:",omitempty"`
+
+	// BLSWalletDir is the file system folder of BLS wallet. The directory can
+	// be specified as a relative path, in which case it is resolved relative to the
+	// current directory.
+	BLSWalletDir string `toml:",omitempty"`
 
 	// KeyStoreDir is the file system folder that contains private keys. The directory can
 	// be specified as a relative path, in which case it is resolved relative to the
@@ -202,7 +219,10 @@ type Config struct {
 	AllowUnprotectedTxs bool `toml:",omitempty"`
 
 	// JWTSecret is the hex-encoded jwt secret.
-	JWTSecret string `toml:",omitempty"`
+	JWTSecret               string `toml:",omitempty"`
+	EnableDoubleSignMonitor bool   `toml:",omitempty"`
+	// EnableMaliciousVoteMonitor is a flag that whether to enable the malicious vote checker
+	EnableMaliciousVoteMonitor bool `toml:",omitempty"`
 }
 
 // IPCEndpoint resolves an IPC endpoint based on a configured value, taking into

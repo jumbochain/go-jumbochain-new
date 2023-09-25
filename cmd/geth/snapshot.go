@@ -1,4 +1,4 @@
-// Copyright 2021 The go-ethereum Authors
+// Copyright 2020 The go-ethereum Authors
 // This file is part of go-ethereum.
 //
 // go-ethereum is free software: you can redistribute it and/or modify
@@ -20,19 +20,28 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
+	"path/filepath"
 	"time"
 
+	"github.com/prometheus/tsdb/fileutil"
 	cli "gopkg.in/urfave/cli.v1"
+
 	"jumbochain.org/cmd/utils"
 	"jumbochain.org/common"
+	"jumbochain.org/core"
 	"jumbochain.org/core/rawdb"
 	"jumbochain.org/core/state"
 	"jumbochain.org/core/state/pruner"
 	"jumbochain.org/core/state/snapshot"
 	"jumbochain.org/core/types"
 	"jumbochain.org/crypto"
+	"jumbochain.org/eth/ethconfig"
+	"jumbochain.org/ethdb"
 	"jumbochain.org/log"
+	"jumbochain.org/metrics"
+	"jumbochain.org/node"
 	"jumbochain.org/rlp"
 	"jumbochain.org/trie"
 )
@@ -58,10 +67,13 @@ var (
 				ArgsUsage: "<root>",
 				Action:    utils.MigrateFlags(pruneState),
 				Category:  "MISCELLANEOUS COMMANDS",
-				Flags: utils.GroupFlags([]cli.Flag{
+				Flags: []cli.Flag{
+					utils.DataDirFlag,
+					utils.AncientFlag,
 					utils.CacheTrieJournalFlag,
 					utils.BloomFilterSizeFlag,
-				}, utils.NetworkFlags, utils.DatabasePathFlags),
+					utils.TriesInMemoryFlag,
+				},
 				Description: `
 geth snapshot prune-state <state-root>
 will prune historical state data with the help of the state snapshot.
@@ -78,12 +90,39 @@ the trie clean cache with default directory will be deleted.
 `,
 			},
 			{
+				Name:     "prune-block",
+				Usage:    "Prune block data offline",
+				Action:   utils.MigrateFlags(pruneBlock),
+				Category: "MISCELLANEOUS COMMANDS",
+				Flags: []cli.Flag{
+					utils.DataDirFlag,
+					utils.AncientFlag,
+					utils.BlockAmountReserved,
+					utils.TriesInMemoryFlag,
+					utils.CheckSnapshotWithMPT,
+				},
+				Description: `
+geth offline prune-block for block data in ancientdb.
+The amount of blocks expected for remaining after prune can be specified via block-amount-reserved in this command,
+will prune and only remain the specified amount of old block data in ancientdb.
+the brief workflow is to backup the the number of this specified amount blocks backward in original ancientdb 
+into new ancient_backup, then delete the original ancientdb dir and rename the ancient_backup to original one for replacement,
+finally assemble the statedb and new ancientDb together.
+The purpose of doing it is because the block data will be moved into the ancient store when it
+becomes old enough(exceed the Threshold 90000), the disk usage will be very large over time, and is occupied mainly by ancientDb,
+so it's very necessary to do block data prune, this feature will handle it.
+`,
+			},
+			{
 				Name:      "verify-state",
 				Usage:     "Recalculate state hash based on the snapshot for verification",
 				ArgsUsage: "<root>",
 				Action:    utils.MigrateFlags(verifyState),
 				Category:  "MISCELLANEOUS COMMANDS",
-				Flags:     utils.GroupFlags(utils.NetworkFlags, utils.DatabasePathFlags),
+				Flags: []cli.Flag{
+					utils.DataDirFlag,
+					utils.AncientFlag,
+				},
 				Description: `
 geth snapshot verify-state <state-root>
 will traverse the whole accounts and storages set based on the specified
@@ -92,24 +131,38 @@ In other words, this command does the snapshot to trie conversion.
 `,
 			},
 			{
-				Name:      "check-dangling-storage",
-				Usage:     "Check that there is no 'dangling' snap storage",
-				ArgsUsage: "<root>",
-				Action:    utils.MigrateFlags(checkDanglingStorage),
+				Name: "insecure-prune-all",
+				Usage: "Prune all trie state data except genesis block, it will break storage for fullnode, only suitable for fast node " +
+					"who do not need trie storage at all",
+				ArgsUsage: "<genesisPath>",
+				Action:    utils.MigrateFlags(pruneAllState),
 				Category:  "MISCELLANEOUS COMMANDS",
-				Flags:     utils.GroupFlags(utils.NetworkFlags, utils.DatabasePathFlags),
+				Flags: []cli.Flag{
+					utils.DataDirFlag,
+					utils.AncientFlag,
+				},
 				Description: `
-geth snapshot check-dangling-storage <state-root> traverses the snap storage 
-data, and verifies that all snapshot storage data has a corresponding account. 
+will prune all historical trie state data except genesis block.
+All trie nodes will be deleted from the database. 
+
+It expects the genesis file as argument.
+
+WARNING: It's necessary to delete the trie clean cache after the pruning.
+If you specify another directory for the trie clean cache via "--cache.trie.journal"
+during the use of Geth, please also specify it here for correct deletion. Otherwise
+the trie clean cache with default directory will be deleted.
 `,
 			},
 			{
 				Name:      "traverse-state",
-				Usage:     "Traverse the state with given root hash and perform quick verification",
+				Usage:     "Traverse the state with given root hash for verification",
 				ArgsUsage: "<root>",
 				Action:    utils.MigrateFlags(traverseState),
 				Category:  "MISCELLANEOUS COMMANDS",
-				Flags:     utils.GroupFlags(utils.NetworkFlags, utils.DatabasePathFlags),
+				Flags: []cli.Flag{
+					utils.DataDirFlag,
+					utils.AncientFlag,
+				},
 				Description: `
 geth snapshot traverse-state <state-root>
 will traverse the whole state from the given state root and will abort if any
@@ -121,11 +174,14 @@ It's also usable without snapshot enabled.
 			},
 			{
 				Name:      "traverse-rawstate",
-				Usage:     "Traverse the state with given root hash and perform detailed verification",
+				Usage:     "Traverse the state with given root hash for verification",
 				ArgsUsage: "<root>",
 				Action:    utils.MigrateFlags(traverseRawState),
 				Category:  "MISCELLANEOUS COMMANDS",
-				Flags:     utils.GroupFlags(utils.NetworkFlags, utils.DatabasePathFlags),
+				Flags: []cli.Flag{
+					utils.DataDirFlag,
+					utils.AncientFlag,
+				},
 				Description: `
 geth snapshot traverse-rawstate <state-root>
 will traverse the whole state from the given root and will abort if any referenced
@@ -142,12 +198,15 @@ It's also usable without snapshot enabled.
 				ArgsUsage: "[? <blockHash> | <blockNum>]",
 				Action:    utils.MigrateFlags(dumpState),
 				Category:  "MISCELLANEOUS COMMANDS",
-				Flags: utils.GroupFlags([]cli.Flag{
+				Flags: []cli.Flag{
+					utils.DataDirFlag,
+					utils.AncientFlag,
 					utils.ExcludeCodeFlag,
 					utils.ExcludeStorageFlag,
 					utils.StartKeyFlag,
 					utils.DumpLimitFlag,
-				}, utils.NetworkFlags, utils.DatabasePathFlags),
+					utils.TriesInMemoryFlag,
+				},
 				Description: `
 This command is semantically equivalent to 'geth dump', but uses the snapshots
 as the backend data source, making this command a lot faster. 
@@ -160,12 +219,196 @@ block is used.
 	}
 )
 
+func accessDb(ctx *cli.Context, stack *node.Node) (ethdb.Database, error) {
+	//The layer of tries trees that keep in memory.
+	TriesInMemory := int(ctx.GlobalUint64(utils.TriesInMemoryFlag.Name))
+	chaindb := utils.MakeChainDatabase(ctx, stack, false, true)
+	defer chaindb.Close()
+
+	if !ctx.GlobalBool(utils.CheckSnapshotWithMPT.Name) {
+		return chaindb, nil
+	}
+	headBlock := rawdb.ReadHeadBlock(chaindb)
+	if headBlock == nil {
+		return nil, errors.New("failed to load head block")
+	}
+	headHeader := headBlock.Header()
+	//Make sure the MPT and snapshot matches before pruning, otherwise the node can not start.
+	snaptree, err := snapshot.New(chaindb, trie.NewDatabase(chaindb), 256, TriesInMemory, headBlock.Root(), false, false, false, false)
+	if err != nil {
+		log.Error("snaptree error", "err", err)
+		return nil, err // The relevant snapshot(s) might not exist
+	}
+
+	// Use the HEAD-(n-1) as the target root. The reason for picking it is:
+	// - in most of the normal cases, the related state is available
+	// - the probability of this layer being reorg is very low
+
+	// Retrieve all snapshot layers from the current HEAD.
+	// In theory there are n difflayers + 1 disk layer present,
+	// so n diff layers are expected to be returned.
+	layers := snaptree.Snapshots(headHeader.Root, TriesInMemory, true)
+	if len(layers) != TriesInMemory {
+		// Reject if the accumulated diff layers are less than n. It
+		// means in most of normal cases, there is no associated state
+		// with bottom-most diff layer.
+		log.Error("snapshot layers != TriesInMemory", "err", err)
+		return nil, fmt.Errorf("snapshot not old enough yet: need %d more blocks", TriesInMemory-len(layers))
+	}
+	// Use the bottom-most diff layer as the target
+	targetRoot := layers[len(layers)-1].Root()
+
+	// Ensure the root is really present. The weak assumption
+	// is the presence of root can indicate the presence of the
+	// entire trie.
+	if blob := rawdb.ReadTrieNode(chaindb, targetRoot); len(blob) == 0 {
+		// The special case is for clique based networks(rinkeby, goerli
+		// and some other private networks), it's possible that two
+		// consecutive blocks will have same root. In this case snapshot
+		// difflayer won't be created. So HEAD-(n-1) may not paired with
+		// head-(n-1) layer. Instead the paired layer is higher than the
+		// bottom-most diff layer. Try to find the bottom-most snapshot
+		// layer with state available.
+		//
+		// Note HEAD is ignored. Usually there is the associated
+		// state available, but we don't want to use the topmost state
+		// as the pruning target.
+		var found bool
+		for i := len(layers) - 2; i >= 1; i-- {
+			if blob := rawdb.ReadTrieNode(chaindb, layers[i].Root()); len(blob) != 0 {
+				targetRoot = layers[i].Root()
+				found = true
+				log.Info("Selecting middle-layer as the pruning target", "root", targetRoot, "depth", i)
+				break
+			}
+		}
+		if !found {
+			if blob := rawdb.ReadTrieNode(chaindb, snaptree.DiskRoot()); len(blob) != 0 {
+				targetRoot = snaptree.DiskRoot()
+				found = true
+				log.Info("Selecting disk-layer as the pruning target", "root", targetRoot)
+			}
+		}
+		if !found {
+			if len(layers) > 0 {
+				log.Error("no snapshot paired state")
+				return nil, errors.New("no snapshot paired state")
+			}
+			return nil, fmt.Errorf("associated state[%x] is not present", targetRoot)
+		}
+	} else {
+		if len(layers) > 0 {
+			log.Info("Selecting bottom-most difflayer as the pruning target", "root", targetRoot, "height", headHeader.Number.Uint64()-uint64(len(layers)-1))
+		} else {
+			log.Info("Selecting user-specified state as the pruning target", "root", targetRoot)
+		}
+	}
+	return chaindb, nil
+}
+
+func pruneBlock(ctx *cli.Context) error {
+	var (
+		stack   *node.Node
+		config  gethConfig
+		chaindb ethdb.Database
+		err     error
+
+		oldAncientPath      string
+		newAncientPath      string
+		blockAmountReserved uint64
+		blockpruner         *pruner.BlockPruner
+	)
+
+	stack, config = makeConfigNode(ctx)
+	defer stack.Close()
+	blockAmountReserved = ctx.GlobalUint64(utils.BlockAmountReserved.Name)
+	chaindb, err = accessDb(ctx, stack)
+	if err != nil {
+		return err
+	}
+
+	// Most of the problems reported by users when first using the prune-block
+	// tool are due to incorrect directory settings.Here, the default directory
+	// and relative directory are canceled, and the user is forced to formulate
+	// an absolute path to guide users to run the prune-block command correctly.
+	if !ctx.GlobalIsSet(utils.DataDirFlag.Name) {
+		return errors.New("datadir must be set")
+	} else {
+		datadir := ctx.GlobalString(utils.DataDirFlag.Name)
+		if !filepath.IsAbs(datadir) {
+			// force absolute paths, which often fail due to the splicing of relative paths
+			return errors.New("datadir not abs path")
+		}
+	}
+
+	if !ctx.GlobalIsSet(utils.AncientFlag.Name) {
+		return errors.New("datadir.ancient must be set")
+	} else {
+		oldAncientPath = ctx.GlobalString(utils.AncientFlag.Name)
+		if !filepath.IsAbs(oldAncientPath) {
+			// force absolute paths, which often fail due to the splicing of relative paths
+			return errors.New("datadir.ancient not abs path")
+		}
+	}
+
+	path, _ := filepath.Split(oldAncientPath)
+	if path == "" {
+		return errors.New("prune failed, did not specify the AncientPath")
+	}
+	newAncientPath = filepath.Join(path, "ancient_back")
+
+	blockpruner = pruner.NewBlockPruner(chaindb, stack, oldAncientPath, newAncientPath, blockAmountReserved)
+
+	lock, exist, err := fileutil.Flock(filepath.Join(oldAncientPath, "PRUNEFLOCK"))
+	if err != nil {
+		log.Error("file lock error", "err", err)
+		return err
+	}
+	if exist {
+		defer lock.Release()
+		log.Info("file lock existed, waiting for prune recovery and continue", "err", err)
+		if err := blockpruner.RecoverInterruption("chaindata", config.Eth.DatabaseCache, utils.MakeDatabaseHandles(), "", false); err != nil {
+			log.Error("Pruning failed", "err", err)
+			return err
+		}
+		log.Info("Block prune successfully")
+		return nil
+	}
+
+	if _, err := os.Stat(newAncientPath); err == nil {
+		// No file lock found for old ancientDB but new ancientDB exsisted, indicating the geth was interrupted
+		// after old ancientDB removal, this happened after backup successfully, so just rename the new ancientDB
+		if err := blockpruner.AncientDbReplacer(); err != nil {
+			log.Error("Failed to rename new ancient directory")
+			return err
+		}
+		log.Info("Block prune successfully")
+		return nil
+	}
+	name := "chaindata"
+	if err := blockpruner.BlockPruneBackUp(name, config.Eth.DatabaseCache, utils.MakeDatabaseHandles(), "", false, false); err != nil {
+		log.Error("Failed to back up block", "err", err)
+		return err
+	}
+
+	log.Info("backup block successfully")
+
+	//After backing up successfully, rename the new ancientdb name to the original one, and delete the old ancientdb
+	if err := blockpruner.AncientDbReplacer(); err != nil {
+		return err
+	}
+
+	lock.Release()
+	log.Info("Block prune successfully")
+	return nil
+}
+
 func pruneState(ctx *cli.Context) error {
 	stack, config := makeConfigNode(ctx)
 	defer stack.Close()
 
-	chaindb := utils.MakeChainDatabase(ctx, stack, false)
-	pruner, err := pruner.NewPruner(chaindb, stack.ResolvePath(""), stack.ResolvePath(config.Eth.TrieCleanCacheJournal), ctx.GlobalUint64(utils.BloomFilterSizeFlag.Name))
+	chaindb := utils.MakeChainDatabase(ctx, stack, false, false)
+	pruner, err := pruner.NewPruner(chaindb, stack.ResolvePath(""), stack.ResolvePath(config.Eth.TrieCleanCacheJournal), ctx.GlobalUint64(utils.BloomFilterSizeFlag.Name), ctx.GlobalUint64(utils.TriesInMemoryFlag.Name))
 	if err != nil {
 		log.Error("Failed to open snapshot tree", "err", err)
 		return err
@@ -189,17 +432,59 @@ func pruneState(ctx *cli.Context) error {
 	return nil
 }
 
+func pruneAllState(ctx *cli.Context) error {
+	stack, _ := makeConfigNode(ctx)
+	defer stack.Close()
+
+	genesisPath := ctx.Args().First()
+	if len(genesisPath) == 0 {
+		utils.Fatalf("Must supply path to genesis JSON file")
+	}
+	file, err := os.Open(genesisPath)
+	if err != nil {
+		utils.Fatalf("Failed to read genesis file: %v", err)
+	}
+	defer file.Close()
+
+	g := new(core.Genesis)
+	if err := json.NewDecoder(file).Decode(g); err != nil {
+		cfg := gethConfig{
+			Eth:     ethconfig.Defaults,
+			Node:    defaultNodeConfig(),
+			Metrics: metrics.DefaultConfig,
+		}
+
+		// Load config file.
+		if err := loadConfig(genesisPath, &cfg); err != nil {
+			utils.Fatalf("%v", err)
+		}
+		g = cfg.Eth.Genesis
+	}
+
+	chaindb := utils.MakeChainDatabase(ctx, stack, false, false)
+	pruner, err := pruner.NewAllPruner(chaindb)
+	if err != nil {
+		log.Error("Failed to open snapshot tree", "err", err)
+		return err
+	}
+	if err = pruner.PruneAll(g); err != nil {
+		log.Error("Failed to prune state", "err", err)
+		return err
+	}
+	return nil
+}
+
 func verifyState(ctx *cli.Context) error {
 	stack, _ := makeConfigNode(ctx)
 	defer stack.Close()
 
-	chaindb := utils.MakeChainDatabase(ctx, stack, true)
+	chaindb := utils.MakeChainDatabase(ctx, stack, true, false)
 	headBlock := rawdb.ReadHeadBlock(chaindb)
 	if headBlock == nil {
 		log.Error("Failed to load head block")
 		return errors.New("no head block")
 	}
-	snaptree, err := snapshot.New(chaindb, trie.NewDatabase(chaindb), 256, headBlock.Root(), false, false, false)
+	snaptree, err := snapshot.New(chaindb, trie.NewDatabase(chaindb), 256, 128, headBlock.Root(), false, false, false, false)
 	if err != nil {
 		log.Error("Failed to open snapshot tree", "err", err)
 		return err
@@ -221,16 +506,7 @@ func verifyState(ctx *cli.Context) error {
 		return err
 	}
 	log.Info("Verified the state", "root", root)
-	return snapshot.CheckDanglingStorage(chaindb)
-}
-
-// checkDanglingStorage iterates the snap storage data, and verifies that all
-// storage also has corresponding account data.
-func checkDanglingStorage(ctx *cli.Context) error {
-	stack, _ := makeConfigNode(ctx)
-	defer stack.Close()
-
-	return snapshot.CheckDanglingStorage(utils.MakeChainDatabase(ctx, stack, true))
+	return nil
 }
 
 // traverseState is a helper function used for pruning verification.
@@ -240,7 +516,7 @@ func traverseState(ctx *cli.Context) error {
 	stack, _ := makeConfigNode(ctx)
 	defer stack.Close()
 
-	chaindb := utils.MakeChainDatabase(ctx, stack, true)
+	chaindb := utils.MakeChainDatabase(ctx, stack, true, false)
 	headBlock := rawdb.ReadHeadBlock(chaindb)
 	if headBlock == nil {
 		log.Error("Failed to load head block")
@@ -329,7 +605,7 @@ func traverseRawState(ctx *cli.Context) error {
 	stack, _ := makeConfigNode(ctx)
 	defer stack.Close()
 
-	chaindb := utils.MakeChainDatabase(ctx, stack, true)
+	chaindb := utils.MakeChainDatabase(ctx, stack, true, false)
 	headBlock := rawdb.ReadHeadBlock(chaindb)
 	if headBlock == nil {
 		log.Error("Failed to load head block")
@@ -367,8 +643,6 @@ func traverseRawState(ctx *cli.Context) error {
 		codes      int
 		lastReport time.Time
 		start      = time.Now()
-		hasher     = crypto.NewKeccakState()
-		got        = make([]byte, 32)
 	)
 	accIter := t.NodeIterator(nil)
 	for accIter.Next(true) {
@@ -378,17 +652,9 @@ func traverseRawState(ctx *cli.Context) error {
 		// Check the present for non-empty hash node(embedded node doesn't
 		// have their own hash).
 		if node != (common.Hash{}) {
-			blob := rawdb.ReadTrieNode(chaindb, node)
-			if len(blob) == 0 {
+			if !rawdb.HasTrieNode(chaindb, node) {
 				log.Error("Missing trie node(account)", "hash", node)
 				return errors.New("missing account")
-			}
-			hasher.Reset()
-			hasher.Write(blob)
-			hasher.Read(got)
-			if !bytes.Equal(got, node.Bytes()) {
-				log.Error("Invalid trie node(account)", "hash", node.Hex(), "value", blob)
-				return errors.New("invalid account node")
 			}
 		}
 		// If it's a leaf node, yes we are touching an account,
@@ -414,17 +680,9 @@ func traverseRawState(ctx *cli.Context) error {
 					// Check the present for non-empty hash node(embedded node doesn't
 					// have their own hash).
 					if node != (common.Hash{}) {
-						blob := rawdb.ReadTrieNode(chaindb, node)
-						if len(blob) == 0 {
+						if !rawdb.HasTrieNode(chaindb, node) {
 							log.Error("Missing trie node(storage)", "hash", node)
 							return errors.New("missing storage")
-						}
-						hasher.Reset()
-						hasher.Write(blob)
-						hasher.Read(got)
-						if !bytes.Equal(got, node.Bytes()) {
-							log.Error("Invalid trie node(storage)", "hash", node.Hex(), "value", blob)
-							return errors.New("invalid storage node")
 						}
 					}
 					// Bump the counter if it's leaf node.
@@ -474,7 +732,8 @@ func dumpState(ctx *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	snaptree, err := snapshot.New(db, trie.NewDatabase(db), 256, root, false, false, false)
+	triesInMemory := ctx.GlobalUint64(utils.TriesInMemoryFlag.Name)
+	snaptree, err := snapshot.New(db, trie.NewDatabase(db), int(triesInMemory), 256, root, false, false, false, false)
 	if err != nil {
 		return err
 	}

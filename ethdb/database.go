@@ -189,6 +189,7 @@ type Database interface {
 	Compacter
 	Snapshotter
 	io.Closer
+	DiffStore
 }
 
 type DiffStore interface {

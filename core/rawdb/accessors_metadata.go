@@ -196,3 +196,26 @@ func WriteTransitionStatus(db ethdb.KeyValueWriter, data []byte) {
 		log.Crit("Failed to store the eth2 transition status", "err", err)
 	}
 }
+
+// WriteOffSetOfCurrentAncientFreezer write prune block start
+func WriteOffSetOfCurrentAncientFreezer(db ethdb.KeyValueWriter, offset uint64) {
+	if err := db.Put(offSetOfCurrentAncientFreezer, new(big.Int).SetUint64(offset).Bytes()); err != nil {
+		log.Crit("Failed to store the current offset of ancient", "err", err)
+	}
+}
+
+// ReadOffSetOfLastAncientFreezer return last prune block start
+func ReadOffSetOfLastAncientFreezer(db ethdb.KeyValueReader) uint64 {
+	offset, _ := db.Get(offSetOfLastAncientFreezer)
+	if offset == nil {
+		return 0
+	}
+	return new(big.Int).SetBytes(offset).Uint64()
+}
+
+// WriteOffSetOfLastAncientFreezer wirte before prune block start
+func WriteOffSetOfLastAncientFreezer(db ethdb.KeyValueWriter, offset uint64) {
+	if err := db.Put(offSetOfLastAncientFreezer, new(big.Int).SetUint64(offset).Bytes()); err != nil {
+		log.Crit("Failed to store the old offset of ancient", "err", err)
+	}
+}

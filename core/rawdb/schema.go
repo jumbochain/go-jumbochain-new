@@ -35,6 +35,9 @@ var (
 
 	offSetOfCurrentAncientFreezer = []byte("offSetOfCurrentAncientFreezer")
 
+	//offSet of the ancientDB before updated version.
+	offSetOfLastAncientFreezer = []byte("offSetOfLastAncientFreezer")
+
 	// headHeaderKey tracks the latest known header's hash.
 	headHeaderKey = []byte("LastHeader")
 
