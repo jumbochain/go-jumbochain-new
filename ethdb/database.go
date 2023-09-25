@@ -178,6 +178,11 @@ type AncientStore interface {
 	io.Closer
 }
 
+type DiffStore interface {
+	DiffStore() KeyValueStore
+	SetDiffStore(diff KeyValueStore)
+}
+
 // Database contains all the methods required by the high level database to not
 // only access the key-value data store but also the chain freezer.
 type Database interface {
@@ -189,9 +194,4 @@ type Database interface {
 	Compacter
 	Snapshotter
 	io.Closer
-}
-
-type DiffStore interface {
-	DiffStore() KeyValueStore
-	SetDiffStore(diff KeyValueStore)
 }
