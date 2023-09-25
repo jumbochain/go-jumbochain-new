@@ -32,22 +32,38 @@ import (
 var AppHelpFlagGroups = []flags.FlagGroup{
 	{
 		Name: "ETHEREUM",
-		Flags: utils.GroupFlags([]cli.Flag{
+		Flags: []cli.Flag{
 			configFileFlag,
+			utils.DataDirFlag,
+			utils.AncientFlag,
 			utils.MinFreeDiskSpaceFlag,
 			utils.KeyStoreDirFlag,
-			utils.USBFlag,
+			utils.NoUSBFlag,
+			utils.DirectBroadcastFlag,
+			utils.DisableSnapProtocolFlag,
+			utils.DisableDiffProtocolFlag,
+			utils.EnableTrustProtocolFlag,
+			// utils.DisableBscProtocolFlag,
+			utils.RangeLimitFlag,
 			utils.SmartCardDaemonPathFlag,
 			utils.NetworkIdFlag,
+			utils.MainnetFlag,
 			utils.SyncModeFlag,
+			utils.TriesVerifyModeFlag,
 			utils.ExitWhenSyncedFlag,
 			utils.GCModeFlag,
 			utils.TxLookupLimitFlag,
 			utils.EthStatsURLFlag,
 			utils.IdentityFlag,
 			utils.LightKDFFlag,
-			utils.EthRequiredBlocksFlag,
-		}, utils.NetworkFlags, utils.DatabasePathFlags),
+			utils.WhitelistFlag,
+			utils.TriesInMemoryFlag,
+			utils.BlockAmountReserved,
+			utils.CheckSnapshotWithMPT,
+			utils.BLSPasswordFileFlag,
+			utils.BLSWalletDirFlag,
+			utils.VoteJournalDirFlag,
+		},
 	},
 	{
 		Name: "LIGHT CLIENT",
@@ -98,6 +114,7 @@ var AppHelpFlagGroups = []flags.FlagGroup{
 			utils.TxPoolAccountQueueFlag,
 			utils.TxPoolGlobalQueueFlag,
 			utils.TxPoolLifetimeFlag,
+			utils.TxPoolReannounceTimeFlag,
 		},
 	},
 	{
@@ -110,9 +127,7 @@ var AppHelpFlagGroups = []flags.FlagGroup{
 			utils.CacheTrieRejournalFlag,
 			utils.CacheGCFlag,
 			utils.CacheSnapshotFlag,
-			utils.CacheNoPrefetchFlag,
 			utils.CachePreimagesFlag,
-			utils.FDLimitFlag,
 		},
 	},
 	{
@@ -142,10 +157,6 @@ var AppHelpFlagGroups = []flags.FlagGroup{
 			utils.WSApiFlag,
 			utils.WSPathPrefixFlag,
 			utils.WSAllowedOriginsFlag,
-			utils.JWTSecretFlag,
-			utils.AuthListenFlag,
-			utils.AuthPortFlag,
-			utils.AuthVirtualHostsFlag,
 			utils.GraphQLEnabledFlag,
 			utils.GraphQLCORSDomainFlag,
 			utils.GraphQLVirtualHostsFlag,
@@ -165,6 +176,7 @@ var AppHelpFlagGroups = []flags.FlagGroup{
 			utils.DNSDiscoveryFlag,
 			utils.ListenPortFlag,
 			utils.MaxPeersFlag,
+			utils.MaxPeersPerIPFlag,
 			utils.MaxPendingPeersFlag,
 			utils.NATFlag,
 			utils.NoDiscoverFlag,
@@ -186,7 +198,9 @@ var AppHelpFlagGroups = []flags.FlagGroup{
 			utils.MinerEtherbaseFlag,
 			utils.MinerExtraDataFlag,
 			utils.MinerRecommitIntervalFlag,
-			utils.MinerNoVerifyFlag,
+			utils.MinerDelayLeftoverFlag,
+			utils.MinerNoVerfiyFlag,
+			utils.VotingEnabledFlag,
 		},
 	},
 	{
@@ -219,7 +233,6 @@ var AppHelpFlagGroups = []flags.FlagGroup{
 		Name: "ALIASED (deprecated)",
 		Flags: []cli.Flag{
 			utils.NoUSBFlag,
-			utils.LegacyWhitelistFlag,
 		},
 	},
 	{
@@ -227,8 +240,13 @@ var AppHelpFlagGroups = []flags.FlagGroup{
 		Flags: []cli.Flag{
 			utils.SnapshotFlag,
 			utils.BloomFilterSizeFlag,
-			utils.IgnoreLegacyReceiptsFlag,
 			cli.HelpFlag,
+		},
+	},
+	{
+		Name: "BLS ACCOUNT",
+		Flags: []cli.Flag{
+			utils.DataDirFlag,
 		},
 	},
 }

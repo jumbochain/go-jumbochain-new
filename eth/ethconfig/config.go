@@ -157,9 +157,18 @@ type Config struct {
 	// for nodes to connect to.
 	EthDiscoveryURLs  []string
 	SnapDiscoveryURLs []string
+	TrustDiscoveryURLs []string
+	BscDiscoveryURLs   []string
 
 	NoPruning  bool // Whether to disable pruning and flush everything to disk
+	DisableSnapProtocol bool //Whether disable snap protocol
+	DisableDiffProtocol bool //Whether disable diff protocol
+	EnableTrustProtocol bool //Whether enable trust protocol
+	DisableBscProtocol  bool //Whether disable bsc protocol
+	DiffSync            bool // Whether support diff sync
 	NoPrefetch bool // Whether to disable prefetching and only load state on demand
+	PipeCommit          bool
+	RangeLimit          bool
 
 	TxLookupLimit uint64 `toml:",omitempty"` // The maximum number of blocks from head whose tx indices are reserved.
 
@@ -167,6 +176,9 @@ type Config struct {
 	// canonical chain of all remote peers. Setting the option makes geth verify the
 	// presence of these blocks for every new peer connection.
 	RequiredBlocks map[uint64]common.Hash `toml:"-"`
+
+		// Whitelist of required block number -> hash values to accept
+	Whitelist map[uint64]common.Hash `toml:"-"`
 
 	// Light client options
 	LightServ          int  `toml:",omitempty"` // Maximum percentage of time allowed for serving LES requests
@@ -176,7 +188,7 @@ type Config struct {
 	LightNoPrune       bool `toml:",omitempty"` // Whether to disable light chain pruning
 	LightNoSyncServe   bool `toml:",omitempty"` // Whether to serve light clients before syncing
 	SyncFromCheckpoint bool `toml:",omitempty"` // Whether to sync the header chain from the configured checkpoint
-
+	TriesInMemory           uint64
 	// Ultra Light client options
 	UltraLightServers      []string `toml:",omitempty"` // List of trusted ultra light servers
 	UltraLightFraction     int      `toml:",omitempty"` // Percentage of trusted servers to accept an announcement
@@ -187,6 +199,18 @@ type Config struct {
 	DatabaseHandles    int  `toml:"-"`
 	DatabaseCache      int
 	DatabaseFreezer    string
+	DatabaseDiff       string
+	PersistDiff        bool
+	DiffBlock          uint64
+
+	// PruneAncientData is an optional config and disabled by default, and usually you do not need it.
+	// When this flag is enabled, only keep the latest 9w blocks' data, the older blocks' data will be
+	// pruned instead of being dumped to freezerdb, the pruned data includes CanonicalHash, Header, Block,
+	// Receipt and TotalDifficulty.
+	// Notice: the PruneAncientData once be turned on, the get/chaindata/ancient dir will be removed,
+	// if restart without the pruneancient flag, the ancient data will start with the previous point that
+	// the oldest unpruned block number.
+	PruneAncientData bool
 
 	TrieCleanCache          int
 	TrieCleanCacheJournal   string        `toml:",omitempty"` // Disk journal directory for trie cache to survive node restarts
@@ -198,6 +222,8 @@ type Config struct {
 	TriesInMemory uint64
 	SnapshotCache int
 	Preimages     bool
+
+	DirectBroadcast     bool
 
 	// Mining options
 	Miner miner.Config

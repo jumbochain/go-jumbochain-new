@@ -1563,9 +1563,9 @@ func setMiner(ctx *cli.Context, cfg *miner.Config) {
 	if ctx.GlobalBool(VotingEnabledFlag.Name) {
 		cfg.VoteEnable = true
 	}
-	if ctx.GlobalBool(DisableVoteAttestationFlag.Name) {
-		cfg.DisableVoteAttestation = true
-	}
+	// if ctx.GlobalBool(DisableVoteAttestationFlag.Name) {
+	// 	cfg.DisableVoteAttestation = true
+	// }
 }
 
 func setWhitelist(ctx *cli.Context, cfg *ethconfig.Config) {
