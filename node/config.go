@@ -109,11 +109,11 @@ type Config struct {
 	NoUSB bool `toml:",omitempty"`
 
 	// DirectBroadcast enable directly broadcast mined block to all peers
-	DirectBroadcast bool `toml:",omitempty"`
+	//DirectBroadcast bool `toml:",omitempty"`
 	// DisableSnapProtocol disable the snap protocol
-	DisableSnapProtocol bool `toml:",omitempty"`
+	//DisableSnapProtocol bool `toml:",omitempty"`
 	// RangeLimit enable 5000 blocks limit when handle range query
-	RangeLimit bool `toml:",omitempty"`
+	//RangeLimit bool `toml:",omitempty"`
 
 	// USB enables hardware wallet monitoring and connectivity.
 	USB bool `toml:",omitempty"`
@@ -234,13 +234,13 @@ type Config struct {
 	// EnableMaliciousVoteMonitor is a flag that whether to enable the malicious vote checker
 	EnableMaliciousVoteMonitor bool `toml:",omitempty"`
 	// BLSPasswordFile is the file that contains BLS wallet password.
-	BLSPasswordFile string `toml:",omitempty"`
+	//BLSPasswordFile string `toml:",omitempty"`
 	// BLSWalletDir is the file system folder of BLS wallet. The directory can
 	// be specified as a relative path, in which case it is resolved relative to the
 	// current directory.
-	BLSWalletDir string `toml:",omitempty"`
+	//BLSWalletDir string `toml:",omitempty"`
 	// VoteJournalDir is the directory to store votes in the fast finality feature.
-	VoteJournalDir string `toml:",omitempty"`
+	//VoteJournalDir string `toml:",omitempty"`
 }
 
 // IPCEndpoint resolves an IPC endpoint based on a configured value, taking into

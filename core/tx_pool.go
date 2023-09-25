@@ -980,7 +980,7 @@ func (pool *TxPool) Status(hashes []common.Hash) []TxStatus {
 	return status
 }
 
-// Get returns a transaction if it is contained in the pool and nil otherwise.
+// Get returns a transaction if itP is contained in the pool and nil otherwise.
 func (pool *TxPool) Get(hash common.Hash) *types.Transaction {
 	return pool.all.Get(hash)
 }

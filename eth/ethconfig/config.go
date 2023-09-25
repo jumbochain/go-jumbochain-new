@@ -123,15 +123,15 @@ func init() {
 
 // Config contains configuration options for of the ETH and LES protocols.
 type Config struct {
-	TrustDiscoveryURLs []string
-	BscDiscoveryURLs   []string
-	DatabaseDiff       string
+	//TrustDiscoveryURLs []string
+	//BscDiscoveryURLs   []string
+	//DatabaseDiff       string
 	// The genesis block, which is inserted if the database is empty.
 	// If nil, the Ethereum main net block is used.
 	Genesis *core.Genesis `toml:",omitempty"`
 
-	PersistDiff bool
-	DiffBlock   uint64
+	// PersistDiff bool
+	// DiffBlock   uint64
 	// PruneAncientData is an optional config and disabled by default, and usually you do not need it.
 	// When this flag is enabled, only keep the latest 9w blocks' data, the older blocks' data will be
 	// pruned instead of being dumped to freezerdb, the pruned data includes CanonicalHash, Header, Block,
@@ -139,15 +139,15 @@ type Config struct {
 	// Notice: the PruneAncientData once be turned on, the get/chaindata/ancient dir will be removed,
 	// if restart without the pruneancient flag, the ancient data will start with the previous point that
 	// the oldest unpruned block number.
-	PruneAncientData bool
+	// PruneAncientData bool
 
-	DirectBroadcast     bool
-	DisableSnapProtocol bool //Whether disable snap protocol
-	DisableDiffProtocol bool //Whether disable diff protocol
-	EnableTrustProtocol bool //Whether enable trust protocol
-	DiffSync            bool // Whether support diff sync
-	PipeCommit          bool
-	RangeLimit          bool
+	// DirectBroadcast     bool
+	// DisableSnapProtocol bool //Whether disable snap protocol
+	// DisableDiffProtocol bool //Whether disable diff protocol
+	// EnableTrustProtocol bool //Whether enable trust protocol
+	// DiffSync            bool // Whether support diff sync
+	// PipeCommit          bool
+	// RangeLimit          bool
 
 	// Protocol options
 	NetworkId uint64 // Network ID to use for selecting peers to connect to
@@ -155,18 +155,18 @@ type Config struct {
 
 	// This can be set to list of enrtree:// URLs which will be queried for
 	// for nodes to connect to.
-	EthDiscoveryURLs  []string
-	SnapDiscoveryURLs []string
+	EthDiscoveryURLs   []string
+	SnapDiscoveryURLs  []string
 	TrustDiscoveryURLs []string
 	BscDiscoveryURLs   []string
 
-	NoPruning  bool // Whether to disable pruning and flush everything to disk
+	NoPruning           bool // Whether to disable pruning and flush everything to disk
 	DisableSnapProtocol bool //Whether disable snap protocol
 	DisableDiffProtocol bool //Whether disable diff protocol
 	EnableTrustProtocol bool //Whether enable trust protocol
 	DisableBscProtocol  bool //Whether disable bsc protocol
 	DiffSync            bool // Whether support diff sync
-	NoPrefetch bool // Whether to disable prefetching and only load state on demand
+	NoPrefetch          bool // Whether to disable prefetching and only load state on demand
 	PipeCommit          bool
 	RangeLimit          bool
 
@@ -177,8 +177,8 @@ type Config struct {
 	// presence of these blocks for every new peer connection.
 	RequiredBlocks map[uint64]common.Hash `toml:"-"`
 
-		// Whitelist of required block number -> hash values to accept
-	Whitelist map[uint64]common.Hash `toml:"-"`
+	// Whitelist of required block number -> hash values to accept
+	//Whitelist map[uint64]common.Hash `toml:"-"`
 
 	// Light client options
 	LightServ          int  `toml:",omitempty"` // Maximum percentage of time allowed for serving LES requests
@@ -188,7 +188,7 @@ type Config struct {
 	LightNoPrune       bool `toml:",omitempty"` // Whether to disable light chain pruning
 	LightNoSyncServe   bool `toml:",omitempty"` // Whether to serve light clients before syncing
 	SyncFromCheckpoint bool `toml:",omitempty"` // Whether to sync the header chain from the configured checkpoint
-	TriesInMemory           uint64
+	//TriesInMemory      uint64
 	// Ultra Light client options
 	UltraLightServers      []string `toml:",omitempty"` // List of trusted ultra light servers
 	UltraLightFraction     int      `toml:",omitempty"` // Percentage of trusted servers to accept an announcement
@@ -223,7 +223,7 @@ type Config struct {
 	SnapshotCache int
 	Preimages     bool
 
-	DirectBroadcast     bool
+	DirectBroadcast bool
 
 	// Mining options
 	Miner miner.Config
