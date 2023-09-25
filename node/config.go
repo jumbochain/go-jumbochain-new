@@ -91,6 +91,13 @@ type Config struct {
 	// Deprecated: USB monitoring is disabled by default and must be enabled explicitly.
 	NoUSB bool `toml:",omitempty"`
 
+		// DirectBroadcast enable directly broadcast mined block to all peers	
+		DirectBroadcast bool `toml:",omitempty"`	
+		// DisableSnapProtocol disable the snap protocol	
+		DisableSnapProtocol bool `toml:",omitempty"`	
+		// RangeLimit enable 5000 blocks limit when handle range query	
+		RangeLimit bool `toml:",omitempty"`
+
 	// USB enables hardware wallet monitoring and connectivity.
 	USB bool `toml:",omitempty"`
 
@@ -193,6 +200,7 @@ type Config struct {
 
 	// Logger is a custom logger to use with the p2p.Server.
 	Logger log.Logger `toml:",omitempty"`
+	LogConfig *LogConfig `toml:",omitempty"`
 
 	staticNodesWarning     bool
 	trustedNodesWarning    bool
@@ -203,6 +211,20 @@ type Config struct {
 
 	// JWTSecret is the hex-encoded jwt secret.
 	JWTSecret string `toml:",omitempty"`
+
+			
+	// EnableDoubleSignMonitor is a flag that whether to enable the double signature checker	
+	EnableDoubleSignMonitor bool `toml:",omitempty"`	
+	// EnableMaliciousVoteMonitor is a flag that whether to enable the malicious vote checker	
+	EnableMaliciousVoteMonitor bool `toml:",omitempty"`	
+	// BLSPasswordFile is the file that contains BLS wallet password.	
+	BLSPasswordFile string `toml:",omitempty"`	
+	// BLSWalletDir is the file system folder of BLS wallet. The directory can	
+	// be specified as a relative path, in which case it is resolved relative to the	
+	// current directory.	
+	BLSWalletDir string `toml:",omitempty"`	
+	// VoteJournalDir is the directory to store votes in the fast finality feature.	
+	VoteJournalDir string `toml:",omitempty"`
 }
 
 // IPCEndpoint resolves an IPC endpoint based on a configured value, taking into
@@ -498,4 +520,17 @@ func (c *Config) warnOnce(w *bool, format string, args ...interface{}) {
 	}
 	l.Warn(fmt.Sprintf(format, args...))
 	*w = true
+}
+
+type LogConfig struct {
+	FileRoot     *string `toml:",omitempty"`
+	FilePath     *string `toml:",omitempty"`
+	MaxBytesSize *uint   `toml:",omitempty"`
+	Level        *string `toml:",omitempty"`
+	RotateHours  int     `toml:",omitempty"`
+
+	// TermTimeFormat is the time format used for console logging.
+	TermTimeFormat *string `toml:",omitempty"`
+	// TimeFormat is the time format used for file logging.
+	TimeFormat *string `toml:",omitempty"`
 }

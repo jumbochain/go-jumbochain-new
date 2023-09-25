@@ -50,6 +50,8 @@ import (
 	"jumbochain.org/core/vm"
 	"jumbochain.org/crypto"
 	"jumbochain.org/eth"
+	ethcatalyst "jumbochain.org/eth/catalyst"
+	lescatalyst"jumbochain.org/les/catalyst"
 	"jumbochain.org/eth/downloader"
 	"jumbochain.org/eth/ethconfig"
 	"jumbochain.org/eth/gasprice"
@@ -1560,9 +1562,9 @@ func setMiner(ctx *cli.Context, cfg *miner.Config) {
 	if ctx.GlobalBool(VotingEnabledFlag.Name) {
 		cfg.VoteEnable = true
 	}
-	if ctx.GlobalBool(DisableVoteAttestationFlag.Name) {
-		cfg.DisableVoteAttestation = true
-	}
+	// if ctx.GlobalBool(DisableVoteAttestationFlag.Name) {
+	// 	cfg.DisableVoteAttestation = true
+	// }
 }
 
 func setWhitelist(ctx *cli.Context, cfg *ethconfig.Config) {
@@ -1895,7 +1897,7 @@ func SetDNSDiscoveryDefaults(cfg *ethconfig.Config, genesis common.Hash) {
 // RegisterEthService adds an Ethereum client to the stack.
 // The second return value is the full node instance, which may be nil if the
 // node is running as a light client.
-func RegisterEthService(stack *node.Node, cfg *ethconfig.Config) (ethapi.Backend, *eth.Ethereum) {
+func RegisterEthService(stack *node.Node, cfg *ethconfig.Config) (ethapi.Backend, *eth.Jumbochain) {
 	if cfg.SyncMode == downloader.LightSync {
 		backend, err := les.New(stack, cfg)
 		if err != nil {
