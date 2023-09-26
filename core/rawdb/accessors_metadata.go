@@ -219,3 +219,10 @@ func WriteOffSetOfLastAncientFreezer(db ethdb.KeyValueWriter, offset uint64) {
 		log.Crit("Failed to store the old offset of ancient", "err", err)
 	}
 }
+
+// WriteSafePointBlockNumber write the number of block that roothash save to disk
+func WriteSafePointBlockNumber(db ethdb.KeyValueWriter, number uint64) {
+	if err := db.Put(LastSafePointBlockKey, new(big.Int).SetUint64(number).Bytes()); err != nil {
+		log.Crit("Failed to store safe point of block number", "err", err)
+	}
+}

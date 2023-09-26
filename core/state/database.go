@@ -19,6 +19,7 @@ package state
 import (
 	"errors"
 	"fmt"
+	"time"
 
 	lru "github.com/hashicorp/golang-lru"
 	"jumbochain.org/common"
@@ -33,7 +34,12 @@ const (
 	codeSizeCacheSize = 100000
 
 	// Cache size granted for caching clean code.
-	codeCacheSize = 64 * 1024 * 1024
+	codeCacheSize        = 64 * 1024 * 1024
+	accountTrieCacheSize = 32
+	// Number of storage Trie in cache
+	storageTrieCacheSize = 2000
+	purgeInterval        = 600
+	maxAccountTrieSize   = 1024 * 1024
 )
 
 // Database wraps access to tries and contract code.
@@ -270,4 +276,37 @@ func (db *cachingDB) ContractCodeSize(addrHash, codeHash common.Hash) (int, erro
 // TrieDB retrieves any intermediate trie-node caching layer.
 func (db *cachingDB) TrieDB() *trie.Database {
 	return db.db
+}
+func NewDatabaseWithConfigAndCache(db ethdb.Database, config *trie.Config) Database {
+	csc, _ := lru.New(codeSizeCacheSize)
+	cc, _ := lru.New(codeCacheSize)
+	atc, _ := lru.New(accountTrieCacheSize)
+	stc, _ := lru.New(storageTrieCacheSize)
+	noTries := config != nil && config.NoTries
+
+	database := &cachingDB{
+		db:               trie.NewDatabaseWithConfig(db, config),
+		codeSizeCache:    csc,
+		codeCache:        cc,
+		accountTrieCache: atc,
+		storageTrieCache: stc,
+		noTries:          noTries,
+	}
+	if !noTries {
+		go database.purgeLoop()
+	}
+	return database
+}
+func (db *cachingDB) purgeLoop() {
+	for {
+		time.Sleep(purgeInterval * time.Second)
+		_, accounts, ok := db.accountTrieCache.GetOldest()
+		if !ok {
+			continue
+		}
+		tr := accounts.(*trie.SecureTrie).GetRawTrie()
+		if tr.Size() > maxAccountTrieSize {
+			db.Purge()
+		}
+	}
 }

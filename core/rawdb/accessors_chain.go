@@ -1019,3 +1019,22 @@ func ReadDiffLayerRLP(db ethdb.KeyValueReader, blockHash common.Hash) rlp.RawVal
 	data, _ := db.Get(diffLayerKey(blockHash))
 	return data
 }
+
+func WriteDiffLayer(db ethdb.KeyValueWriter, hash common.Hash, layer *types.DiffLayer) {
+	data, err := rlp.EncodeToBytes(layer)
+	if err != nil {
+		log.Crit("Failed to RLP encode diff layer", "err", err)
+	}
+	WriteDiffLayerRLP(db, hash, data)
+}
+
+func WriteDiffLayerRLP(db ethdb.KeyValueWriter, blockHash common.Hash, rlp rlp.RawValue) {
+	if err := db.Put(diffLayerKey(blockHash), rlp); err != nil {
+		log.Crit("Failed to store diff layer", "err", err)
+	}
+}
+func DeleteDiffLayer(db ethdb.KeyValueWriter, blockHash common.Hash) {
+	if err := db.Delete(diffLayerKey(blockHash)); err != nil {
+		log.Crit("Failed to delete diffLayer", "err", err)
+	}
+}

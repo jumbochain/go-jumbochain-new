@@ -112,6 +112,7 @@ type AncientWriter interface {
 	// If the function returns an error, any changes to the underlying store are reverted.
 	// The integer return value is the total size of the written data.
 	ModifyAncients(func(AncientWriteOp) error) (int64, error)
+	TruncateAncients(n uint64) error
 
 	// TruncateHead discards all but the first n ancient data from the ancient store.
 	// After the truncation, the latest item can be accessed it item_n-1(start from 0).

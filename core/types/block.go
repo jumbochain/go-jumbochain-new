@@ -475,3 +475,10 @@ type VerifyStatus struct {
 	Code uint16
 	Msg  string
 }
+
+func (storage *DiffStorage) Len() int { return len(storage.Keys) }
+func (storage *DiffStorage) Swap(i, j int) {
+	storage.Keys[i], storage.Keys[j] = storage.Keys[j], storage.Keys[i]
+	storage.Vals[i], storage.Vals[j] = storage.Vals[j], storage.Vals[i]
+}
+func (storage *DiffStorage) Less(i, j int) bool { return storage.Keys[i] < storage.Keys[j] }

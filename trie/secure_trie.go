@@ -226,3 +226,7 @@ func (t *SecureTrie) getSecKeyCache() map[string][]byte {
 	}
 	return t.secKeyCache
 }
+
+func (t *SecureTrie) GetRawTrie() Trie {
+	return t.trie
+}
