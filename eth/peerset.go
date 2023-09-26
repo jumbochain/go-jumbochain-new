@@ -22,6 +22,7 @@ import (
 	"sync"
 
 	"jumbochain.org/common"
+	"jumbochain.org/core"
 	"jumbochain.org/eth/protocols/eth"
 	"jumbochain.org/eth/protocols/snap"
 	"jumbochain.org/p2p"
@@ -256,4 +257,18 @@ func (ps *peerSet) close() {
 		p.Disconnect(p2p.DiscQuitting)
 	}
 	ps.closed = true
+}
+
+// GetVerifyPeers returns an array of verify nodes.
+func (ps *peerSet) GetVerifyPeers() []core.VerifyPeer {
+	ps.lock.RLock()
+	defer ps.lock.RUnlock()
+
+	res := make([]core.VerifyPeer, 0)
+	for _, p := range ps.peers {
+		if p.trustExt != nil && p.trustExt.Peer != nil {
+			res = append(res, p.trustExt.Peer)
+		}
+	}
+	return res
 }

@@ -130,6 +130,14 @@ type Config struct {
 	// If nil, the Ethereum main net block is used.
 	Genesis *core.Genesis `toml:",omitempty"`
 
+		// DisablePeerTxBroadcast is an optional config and disabled by default, and usually you do not need it.
+	// When this flag is enabled, you are requesting remote peers to stop broadcasting new transactions to you, and
+	// it does not mean that your node will stop broadcasting transactions to remote peers.
+	// If your node does care about new mempool transactions (e.g., running rpc services without the need of mempool
+	// transactions) or is continuously under high pressure (e.g., mempool is always full), then you can consider
+	// to turn it on.
+	DisablePeerTxBroadcast bool
+
 	// PersistDiff bool
 	// DiffBlock   uint64
 	// PruneAncientData is an optional config and disabled by default, and usually you do not need it.

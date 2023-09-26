@@ -21,6 +21,7 @@ import (
 
 	"jumbochain.org/eth/protocols/eth"
 	"jumbochain.org/eth/protocols/snap"
+	"jumbochain.org/eth/protocols/trust"
 )
 
 // ethPeerInfo represents a short summary of the `eth` sub-protocol metadata known
@@ -36,6 +37,7 @@ type ethPeer struct {
 	*eth.Peer
 	snapExt  *snapPeer     // Satellite `snap` connection
 	snapWait chan struct{} // Notification channel for snap connections
+	trustExt *trustPeer
 }
 
 // info gathers and returns some `eth` protocol metadata known about a peer.
@@ -47,6 +49,11 @@ func (p *ethPeer) info() *ethPeerInfo {
 		Difficulty: td,
 		Head:       hash.Hex(),
 	}
+}
+
+// trustPeer is a wrapper around trust.Peer to maintain a few extra metadata.
+type trustPeer struct {
+	*trust.Peer
 }
 
 // snapPeerInfo represents a short summary of the `snap` sub-protocol metadata known

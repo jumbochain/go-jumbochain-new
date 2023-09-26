@@ -89,18 +89,18 @@ var (
 )
 
 const (
-	bodyCacheLimit      = 256
-	blockCacheLimit     = 256
-	diffLayerCacheLimit    = 1024
-	diffLayerRLPCacheLimit = 256
-	receiptsCacheLimit  = 32
-	txLookupCacheLimit  = 1024
-	maxFutureBlocks     = 256
-	maxTimeFutureBlocks = 30
-	maxBadBlockLimit       = 16
-	TriesInMemory       = 128
-	prefetchTxNumber    = 100
-	maxBeyondBlocks        = 2048
+	bodyCacheLimit                  = 256
+	blockCacheLimit                 = 256
+	diffLayerCacheLimit             = 1024
+	diffLayerRLPCacheLimit          = 256
+	receiptsCacheLimit              = 32
+	txLookupCacheLimit              = 1024
+	maxFutureBlocks                 = 256
+	maxTimeFutureBlocks             = 30
+	maxBadBlockLimit                = 16
+	TriesInMemory                   = 128
+	prefetchTxNumber                = 100
+	maxBeyondBlocks                 = 2048
 	diffLayerFreezerRecheckInterval = 3 * time.Second
 	diffLayerPruneRecheckInterval   = 1 * time.Second // The interval to prune unverified diff layers
 	maxDiffQueueDist                = 2048            // Maximum allowed distance from the chain head to queue diffLayers
@@ -274,6 +274,7 @@ type BlockChain struct {
 func NewBlockChain(db ethdb.Database, cacheConfig *CacheConfig, chainConfig *params.ChainConfig, engine consensus.Engine,
 	vmConfig vm.Config, shouldPreserve func(block *types.Header) bool, txLookupLimit *uint64,
 	options ...BlockChainOption) (*BlockChain, error) {
+	fmt.Println("this is my cunsensus", engine)
 	if cacheConfig == nil {
 		cacheConfig = defaultCacheConfig
 	}
@@ -430,6 +431,7 @@ func NewBlockChain(db ethdb.Database, cacheConfig *CacheConfig, chainConfig *par
 			}
 		}
 	}
+	fmt.Println("i am here ---------------", bc.engine)
 	// The first thing the node will do is reconstruct the verification data for
 	// the head block (ethash cache or clique voting snapshot). Might as well do
 	// it in advance.
@@ -2963,7 +2965,7 @@ func (bc *BlockChain) maintainTxIndex(ancients uint64) {
 				<-done
 			}
 			return
-	}
+		}
 	}
 }
 

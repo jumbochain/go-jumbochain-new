@@ -39,6 +39,7 @@ import (
 	"jumbochain.org/log"
 	"jumbochain.org/p2p"
 	"jumbochain.org/params"
+	"jumbochain.org/core/monitor"
 )
 
 const (
@@ -85,8 +86,13 @@ type handlerConfig struct {
 	Sync           downloader.SyncMode       // Whether to snap or full sync
 	BloomCache     uint64                    // Megabytes to alloc for snap sync bloom
 	EventMux       *event.TypeMux            // Legacy event mux, deprecate for `feed`
+	DiffSync               bool                      // Whether to diff sync
 	Checkpoint     *params.TrustedCheckpoint // Hard coded checkpoint for sync challenges
 	RequiredBlocks map[uint64]common.Hash    // Hard coded map of required block hashes for sync challenges
+	Whitelist              map[uint64]common.Hash    // Hard coded whitelist for sync challenged
+	DirectBroadcast        bool
+	DisablePeerTxBroadcast bool
+	PeerSet                *peerSet
 }
 
 type handler struct {
@@ -103,6 +109,10 @@ type handler struct {
 	txpool   txPool
 	chain    *core.BlockChain
 	maxPeers int
+
+	maliciousVoteMonitor *monitor.MaliciousVoteMonitor
+
+	votepool             votePool
 
 	downloader   *downloader.Downloader
 	blockFetcher *fetcher.BlockFetcher
@@ -123,6 +133,17 @@ type handler struct {
 	chainSync *chainSyncer
 	wg        sync.WaitGroup
 	peerWG    sync.WaitGroup
+}
+
+// votePool defines the methods needed from a votes pool implementation to
+// support all the operations needed by the Ethereum chain protocols.
+type votePool interface {
+	PutVote(vote *types.VoteEnvelope)
+	GetVotes() []*types.VoteEnvelope
+
+	// SubscribeNewVoteEvent should return an event subscription of
+	// NewVotesEvent and send events to the given channel.
+	SubscribeNewVoteEvent(ch chan<- core.NewVoteEvent) event.Subscription
 }
 
 // newHandler returns a handler for all Ethereum chain management protocol.
