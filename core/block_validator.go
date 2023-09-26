@@ -26,7 +26,6 @@ import (
 	"jumbochain.org/params"
 	"jumbochain.org/trie"
 )
-
 const badBlockCacheExpire = 30 * time.Second
 
 type BlockValidatorOption func(*BlockValidator) *BlockValidator

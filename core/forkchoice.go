@@ -81,59 +81,59 @@ func NewForkChoice(chainReader ChainReader, preserve func(header *types.Header) 
 // In the td mode, the new head is chosen if the corresponding
 // total difficulty is higher. In the extern mode, the trusted
 // header is always selected as the head.
-func (f *ForkChoice) reorgNeeded(current *types.Header, header *types.Header) (bool, error) {
-	var (
-		localTD  = f.chain.GetTd(current.Hash(), current.Number.Uint64())
-		externTd = f.chain.GetTd(header.Hash(), header.Number.Uint64())
-	)
-	if localTD == nil || externTd == nil {
-		return false, errors.New("missing td")
-	}
-	// Accept the new header as the chain head if the transition
-	// is already triggered. We assume all the headers after the
-	// transition come from the trusted consensus layer.
-	if ttd := f.chain.Config().TerminalTotalDifficulty; ttd != nil && ttd.Cmp(externTd) <= 0 {
-		return true, nil
-	}
-	// If the total difficulty is higher than our known, add it to the canonical chain
-	// Second clause in the if statement reduces the vulnerability to selfish mining.
-	// Please refer to http://www.cs.cornell.edu/~ie53/publications/btcProcFC.pdf
-	reorg := externTd.Cmp(localTD) > 0
-	if !reorg && externTd.Cmp(localTD) == 0 {
-		number, headNumber := header.Number.Uint64(), current.Number.Uint64()
-		if number < headNumber {
-			reorg = true
-		} else if number == headNumber {
-			var currentPreserve, externPreserve bool
-			if f.preserve != nil {
-				currentPreserve, externPreserve = f.preserve(current), f.preserve(header)
-			}
-			reorg = !currentPreserve && (externPreserve || f.rand.Float64() < 0.5)
-		}
-	}
-	return reorg, nil
-}
+// func (f *ForkChoice) reorgNeeded(current *types.Header, header *types.Header) (bool, error) {
+// 	var (
+// 		localTD  = f.chain.GetTd(current.Hash(), current.Number.Uint64())
+// 		externTd = f.chain.GetTd(header.Hash(), header.Number.Uint64())
+// 	)
+// 	if localTD == nil || externTd == nil {
+// 		return false, errors.New("missing td")
+// 	}
+// 	// Accept the new header as the chain head if the transition
+// 	// is already triggered. We assume all the headers after the
+// 	// transition come from the trusted consensus layer.
+// 	if ttd := f.chain.Config().TerminalTotalDifficulty; ttd != nil && ttd.Cmp(externTd) <= 0 {
+// 		return true, nil
+// 	}
+// 	// If the total difficulty is higher than our known, add it to the canonical chain
+// 	// Second clause in the if statement reduces the vulnerability to selfish mining.
+// 	// Please refer to http://www.cs.cornell.edu/~ie53/publications/btcProcFC.pdf
+// 	reorg := externTd.Cmp(localTD) > 0
+// 	if !reorg && externTd.Cmp(localTD) == 0 {
+// 		number, headNumber := header.Number.Uint64(), current.Number.Uint64()
+// 		if number < headNumber {
+// 			reorg = true
+// 		} else if number == headNumber {
+// 			var currentPreserve, externPreserve bool
+// 			if f.preserve != nil {
+// 				currentPreserve, externPreserve = f.preserve(current), f.preserve(header)
+// 			}
+// 			reorg = !currentPreserve && (externPreserve || f.rand.Float64() < 0.5)
+// 		}
+// 	}
+// 	return reorg, nil
+// }
 
 // ReorgNeededWithFastFinality compares justified block numbers firstly, backoff to compare tds when equal
-func (f *ForkChoice) ReorgNeededWithFastFinality(current *types.Header, header *types.Header) (bool, error) {
-	_, ok := f.chain.Engine().(consensus.PoSA)
-	if !ok {
-		return f.reorgNeeded(current, header)
-	}
+// func (f *ForkChoice) ReorgNeededWithFastFinality(current *types.Header, header *types.Header) (bool, error) {
+// 	_, ok := f.chain.Engine().(consensus.PoSA)
+// 	if !ok {
+// 		return f.reorgNeeded(current, header)
+// 	}
 
-	justifiedNumber, curJustifiedNumber := uint64(0), uint64(0)
-	// if f.chain.Config().IsPlato(header.Number) {
-	// 	justifiedNumber = f.chain.GetJustifiedNumber(header)
-	// }
-	// if f.chain.Config().IsPlato(current.Number) {
-	// 	curJustifiedNumber = f.chain.GetJustifiedNumber(current)
-	// }
-	if justifiedNumber == curJustifiedNumber {
-		return f.reorgNeeded(current, header)
-	}
+// 	justifiedNumber, curJustifiedNumber := uint64(0), uint64(0)
+// 	// if f.chain.Config().IsPlato(header.Number) {
+// 	// 	justifiedNumber = f.chain.GetJustifiedNumber(header)
+// 	// }
+// 	// if f.chain.Config().IsPlato(current.Number) {
+// 	// 	curJustifiedNumber = f.chain.GetJustifiedNumber(current)
+// 	// }
+// 	if justifiedNumber == curJustifiedNumber {
+// 		return f.reorgNeeded(current, header)
+// 	}
 
-	return justifiedNumber > curJustifiedNumber, nil
-}
+// 	return justifiedNumber > curJustifiedNumber, nil
+// }
 
 // ReorgNeededWithFastFinality compares justified block numbers firstly, backoff to compare tds when equal
 func (f *ForkChoice) ReorgNeededWithFastFinality(current *types.Header, header *types.Header) (bool, error) {

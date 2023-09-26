@@ -51,7 +51,7 @@ var (
 	frozenOfAncientDBKey = []byte("FrozenOfAncientDB")	
 
 	//LastSafePointBlockKey tracks the block number for block state that write disk
-	LastSafePointBlockKey = []byte("LastSafePointBlockNumber")
+	// LastSafePointBlockKey = []byte("LastSafePointBlockNumber")
 
 	// headFastBlockKey tracks the latest known incomplete block's hash during fast sync.
 	headFastBlockKey = []byte("LastFast")

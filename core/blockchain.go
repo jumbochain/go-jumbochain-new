@@ -56,6 +56,9 @@ var (
 	headFastBlockGauge      = metrics.NewRegisteredGauge("chain/head/receipt", nil)
 	headFinalizedBlockGauge = metrics.NewRegisteredGauge("chain/head/finalized", nil)
 
+	justifiedBlockGauge = metrics.NewRegisteredGauge("chain/head/justified", nil)
+	finalizedBlockGauge = metrics.NewRegisteredGauge("chain/head/finalized", nil)
+
 	accountReadTimer   = metrics.NewRegisteredTimer("chain/account/reads", nil)
 	accountHashTimer   = metrics.NewRegisteredTimer("chain/account/hashes", nil)
 	accountUpdateTimer = metrics.NewRegisteredTimer("chain/account/updates", nil)
@@ -88,13 +91,24 @@ var (
 const (
 	bodyCacheLimit      = 256
 	blockCacheLimit     = 256
+	diffLayerCacheLimit    = 1024
+	diffLayerRLPCacheLimit = 256
 	receiptsCacheLimit  = 32
 	txLookupCacheLimit  = 1024
 	maxFutureBlocks     = 256
 	maxTimeFutureBlocks = 30
+	maxBadBlockLimit       = 16
 	TriesInMemory       = 128
 	prefetchTxNumber    = 100
+	maxBeyondBlocks        = 2048
+	diffLayerFreezerRecheckInterval = 3 * time.Second
+	diffLayerPruneRecheckInterval   = 1 * time.Second // The interval to prune unverified diff layers
+	maxDiffQueueDist                = 2048            // Maximum allowed distance from the chain head to queue diffLayers
+	maxDiffLimit                    = 2048            // Maximum number of unique diff layers a peer may have responded
+	maxDiffForkDist                 = 11              // Maximum allowed backward distance from the chain head
+	maxDiffLimitForBroadcast        = 128             // Maximum number of unique diff layers a peer may have broadcasted
 
+	rewindBadBlockInterval = 1 * time.Second
 	// BlockChainVersion ensures that an incompatible database forces a resync from scratch.
 	//
 	// Changelog:
@@ -2949,7 +2963,7 @@ func (bc *BlockChain) maintainTxIndex(ancients uint64) {
 				<-done
 			}
 			return
-		}
+	}
 	}
 }
 

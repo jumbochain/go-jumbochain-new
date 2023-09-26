@@ -118,7 +118,7 @@ type AncientWriter interface {
 	// After the truncation, the latest item can be accessed it item_n-1(start from 0).
 	// TruncateHead(n uint64) error
 	// TruncateAncients discards all but the first n ancient data from the ancient store.
-	TruncateAncients(n uint64) error
+	// TruncateAncients(n uint64) error
 	// TruncateTail discards the first n ancient data from the ancient store. The already
 	// deleted items are ignored. After the truncation, the earliest item can be accessed
 	// is item_n(start from 0). The deleted items may not be removed from the ancient store
