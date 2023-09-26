@@ -51,12 +51,10 @@ import (
 )
 
 var (
-	headBlockGauge     = metrics.NewRegisteredGauge("chain/head/block", nil)
-	headHeaderGauge    = metrics.NewRegisteredGauge("chain/head/header", nil)
-	headFastBlockGauge = metrics.NewRegisteredGauge("chain/head/receipt", nil)
-
-	justifiedBlockGauge = metrics.NewRegisteredGauge("chain/head/justified", nil)
-	finalizedBlockGauge = metrics.NewRegisteredGauge("chain/head/finalized", nil)
+	headBlockGauge          = metrics.NewRegisteredGauge("chain/head/block", nil)
+	headHeaderGauge         = metrics.NewRegisteredGauge("chain/head/header", nil)
+	headFastBlockGauge      = metrics.NewRegisteredGauge("chain/head/receipt", nil)
+	headFinalizedBlockGauge = metrics.NewRegisteredGauge("chain/head/finalized", nil)
 
 	accountReadTimer   = metrics.NewRegisteredTimer("chain/account/reads", nil)
 	accountHashTimer   = metrics.NewRegisteredTimer("chain/account/hashes", nil)
@@ -88,26 +86,14 @@ var (
 )
 
 const (
-	bodyCacheLimit         = 256
-	blockCacheLimit        = 256
-	diffLayerCacheLimit    = 1024
-	diffLayerRLPCacheLimit = 256
-	receiptsCacheLimit     = 10000
-	txLookupCacheLimit     = 1024
-	maxBadBlockLimit       = 16
-	maxFutureBlocks        = 256
-	maxTimeFutureBlocks    = 30
-	maxBeyondBlocks        = 2048
-	prefetchTxNumber       = 100
-
-	diffLayerFreezerRecheckInterval = 3 * time.Second
-	diffLayerPruneRecheckInterval   = 1 * time.Second // The interval to prune unverified diff layers
-	maxDiffQueueDist                = 2048            // Maximum allowed distance from the chain head to queue diffLayers
-	maxDiffLimit                    = 2048            // Maximum number of unique diff layers a peer may have responded
-	maxDiffForkDist                 = 11              // Maximum allowed backward distance from the chain head
-	maxDiffLimitForBroadcast        = 128             // Maximum number of unique diff layers a peer may have broadcasted
-
-	rewindBadBlockInterval = 1 * time.Second
+	bodyCacheLimit      = 256
+	blockCacheLimit     = 256
+	receiptsCacheLimit  = 32
+	txLookupCacheLimit  = 1024
+	maxFutureBlocks     = 256
+	maxTimeFutureBlocks = 30
+	TriesInMemory       = 128
+	prefetchTxNumber    = 100
 
 	// BlockChainVersion ensures that an incompatible database forces a resync from scratch.
 	//
@@ -3170,5 +3156,3 @@ func CalculateDiffHash(d *types.DiffLayer) (common.Hash, error) {
 	hasher.Sum(hash[:0])
 	return hash, nil
 }
-
-//func (bc *BlockChain) TriesInMemory() uint64 { return bc.triesInMemory }

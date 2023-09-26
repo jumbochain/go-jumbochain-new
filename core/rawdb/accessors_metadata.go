@@ -28,6 +28,12 @@ import (
 	"jumbochain.org/rlp"
 )
 
+// FreezerType enumerator
+const (
+	EntireFreezerType uint64 = iota // classic ancient type
+	PruneFreezerType                // prune ancient type
+)
+
 // ReadDatabaseVersion retrieves the version number of the database.
 func ReadDatabaseVersion(db ethdb.KeyValueReader) *uint64 {
 	var version uint64
@@ -220,9 +226,34 @@ func WriteOffSetOfLastAncientFreezer(db ethdb.KeyValueWriter, offset uint64) {
 	}
 }
 
-// WriteSafePointBlockNumber write the number of block that roothash save to disk
-func WriteSafePointBlockNumber(db ethdb.KeyValueWriter, number uint64) {
-	if err := db.Put(LastSafePointBlockKey, new(big.Int).SetUint64(number).Bytes()); err != nil {
-		log.Crit("Failed to store safe point of block number", "err", err)
+// WriteAncientType write freezer type
+func WriteAncientType(db ethdb.KeyValueWriter, flag uint64) {
+	if err := db.Put(pruneAncientKey, new(big.Int).SetUint64(flag).Bytes()); err != nil {
+		log.Crit("Failed to store prune ancient type", "err", err)
 	}
+}
+
+// ReadFrozenOfAncientFreezer return freezer block number
+func ReadFrozenOfAncientFreezer(db ethdb.KeyValueReader) uint64 {
+	fozen, _ := db.Get(frozenOfAncientDBKey)
+	if fozen == nil {
+		return 0
+	}
+	return new(big.Int).SetBytes(fozen).Uint64()
+}
+
+// WriteFrozenOfAncientFreezer write freezer block number
+func WriteFrozenOfAncientFreezer(db ethdb.KeyValueWriter, frozen uint64) {
+	if err := db.Put(frozenOfAncientDBKey, new(big.Int).SetUint64(frozen).Bytes()); err != nil {
+		log.Crit("Failed to store the ancient frozen number", "err", err)
+	}
+}
+
+// ReadSafePointBlockNumber return the number of block that roothash save to disk
+func ReadSafePointBlockNumber(db ethdb.KeyValueReader) uint64 {
+	num, _ := db.Get(LastSafePointBlockKey)
+	if num == nil {
+		return 0
+	}
+	return new(big.Int).SetBytes(num).Uint64()
 }

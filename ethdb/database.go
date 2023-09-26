@@ -91,7 +91,7 @@ type AncientReaderOp interface {
 
 	// Tail returns the number of first stored item in the freezer.
 	// This number can also be interpreted as the total deleted item numbers.
-	Tail() (uint64, error)
+	// Tail() (uint64, error)
 
 	// AncientSize returns the ancient size of the specified category.
 	AncientSize(kind string) (uint64, error)
@@ -103,7 +103,7 @@ type AncientReader interface {
 
 	// ReadAncients runs the given read operation while ensuring that no writes take place
 	// on the underlying freezer.
-	ReadAncients(fn func(AncientReaderOp) error) (err error)
+	ReadAncients(fn func(AncientReader) error) (err error)
 }
 
 // AncientWriter contains the methods required to write to immutable ancient data.
@@ -116,14 +116,15 @@ type AncientWriter interface {
 
 	// TruncateHead discards all but the first n ancient data from the ancient store.
 	// After the truncation, the latest item can be accessed it item_n-1(start from 0).
-	TruncateHead(n uint64) error
-
+	// TruncateHead(n uint64) error
+	// TruncateAncients discards all but the first n ancient data from the ancient store.
+	TruncateAncients(n uint64) error
 	// TruncateTail discards the first n ancient data from the ancient store. The already
 	// deleted items are ignored. After the truncation, the earliest item can be accessed
 	// is item_n(start from 0). The deleted items may not be removed from the ancient store
 	// immediately, but only when the accumulated deleted data reach the threshold then
 	// will be removed all together.
-	TruncateTail(n uint64) error
+	// TruncateTail(n uint64) error
 
 	// Sync flushes all in-memory ancient store data to disk.
 	Sync() error
@@ -131,7 +132,7 @@ type AncientWriter interface {
 	// MigrateTable processes and migrates entries of a given table to a new format.
 	// The second argument is a function that takes a raw entry and returns it
 	// in the newest format.
-	MigrateTable(string, func([]byte) ([]byte, error)) error
+	// MigrateTable(string, func([]byte) ([]byte, error)) error
 }
 
 // AncientWriteOp is given to the function argument of ModifyAncients.
@@ -146,7 +147,7 @@ type AncientWriteOp interface {
 // AncientStater wraps the Stat method of a backing data store.
 type AncientStater interface {
 	// AncientDatadir returns the root directory path of the ancient store.
-	AncientDatadir() (string, error)
+	// AncientDatadir() (string, error)
 }
 
 // Reader contains the methods required to read data from both key-value as well as

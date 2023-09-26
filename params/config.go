@@ -706,3 +706,8 @@ func (c *ChainConfig) Rules(num *big.Int, isMerge bool) Rules {
 		IsMerge: isMerge,
 	}
 }
+
+// IsPlato returns whether num is either equal to the second fast finality fork block or greater.
+func (c *ChainConfig) IsPlato(num *big.Int) bool {
+	return false
+}

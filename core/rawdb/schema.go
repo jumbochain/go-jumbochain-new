@@ -44,6 +44,15 @@ var (
 	// headBlockKey tracks the latest known full block's hash.
 	headBlockKey = []byte("LastBlock")
 
+	//PruneAncientFlag flag whether prune ancient
+	pruneAncientKey = []byte("PruneAncientFlag")
+
+	//frozenOfAncientDBKey tracks the block number for ancientDB to save.
+	frozenOfAncientDBKey = []byte("FrozenOfAncientDB")	
+
+	//LastSafePointBlockKey tracks the block number for block state that write disk
+	LastSafePointBlockKey = []byte("LastSafePointBlockNumber")
+
 	// headFastBlockKey tracks the latest known incomplete block's hash during fast sync.
 	headFastBlockKey = []byte("LastFast")
 
