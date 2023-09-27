@@ -27,14 +27,31 @@ import (
 
 // The fields below define the low level database schema prefixing.
 var (
+
+	// difflayer database
+	diffLayerPrefix = []byte("d") // diffLayerPrefix + hash  -> diffLayer
 	// databaseVersionKey tracks the current database version.
 	databaseVersionKey = []byte("DatabaseVersion")
+
+	offSetOfCurrentAncientFreezer = []byte("offSetOfCurrentAncientFreezer")
+
+	//offSet of the ancientDB before updated version.
+	offSetOfLastAncientFreezer = []byte("offSetOfLastAncientFreezer")
 
 	// headHeaderKey tracks the latest known header's hash.
 	headHeaderKey = []byte("LastHeader")
 
 	// headBlockKey tracks the latest known full block's hash.
 	headBlockKey = []byte("LastBlock")
+
+	//PruneAncientFlag flag whether prune ancient
+	pruneAncientKey = []byte("PruneAncientFlag")
+
+	//frozenOfAncientDBKey tracks the block number for ancientDB to save.
+	frozenOfAncientDBKey = []byte("FrozenOfAncientDB")	
+
+	//LastSafePointBlockKey tracks the block number for block state that write disk
+	// LastSafePointBlockKey = []byte("LastSafePointBlockNumber")
 
 	// headFastBlockKey tracks the latest known incomplete block's hash during fast sync.
 	headFastBlockKey = []byte("LastFast")
@@ -77,6 +94,9 @@ var (
 
 	// badBlockKey tracks the list of bad blocks seen by local
 	badBlockKey = []byte("InvalidBlock")
+
+	//LastSafePointBlockKey tracks the block number for block state that write disk
+	LastSafePointBlockKey = []byte("LastSafePointBlockNumber")
 
 	// uncleanShutdownKey tracks the list of local crashes
 	uncleanShutdownKey = []byte("unclean-shutdown") // config prefix for the db
@@ -181,6 +201,11 @@ func headerNumberKey(hash common.Hash) []byte {
 // blockBodyKey = blockBodyPrefix + num (uint64 big endian) + hash
 func blockBodyKey(number uint64, hash common.Hash) []byte {
 	return append(append(blockBodyPrefix, encodeBlockNumber(number)...), hash.Bytes()...)
+}
+
+// diffLayerKey = diffLayerKeyPrefix + hash
+func diffLayerKey(hash common.Hash) []byte {
+	return append(diffLayerPrefix, hash.Bytes()...)
 }
 
 // blockReceiptsKey = blockReceiptsPrefix + num (uint64 big endian) + hash

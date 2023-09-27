@@ -28,12 +28,35 @@ import (
 
 	"jumbochain.org/common"
 	"jumbochain.org/common/hexutil"
+	"jumbochain.org/crypto"
 	"jumbochain.org/rlp"
 )
 
 var (
 	EmptyRootHash  = common.HexToHash("56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421")
 	EmptyUncleHash = rlpHash([]*Header(nil))
+	EmptyCodeHash  = crypto.Keccak256(nil)
+)
+
+var (
+	// StatusVerified means the processing of request going as expected and found the root correctly.
+	StatusVerified          = VerifyStatus{Code: 0x100}
+	StatusFullVerified      = VerifyStatus{Code: 0x101, Msg: "state root full verified"}
+	StatusPartiallyVerified = VerifyStatus{Code: 0x102, Msg: "state root partially verified, because of difflayer not found"}
+
+	// StatusFailed means the request has something wrong.
+	StatusFailed           = VerifyStatus{Code: 0x200}
+	StatusDiffHashMismatch = VerifyStatus{Code: 0x201, Msg: "verify failed because of blockhash mismatch with diffhash"}
+	StatusImpossibleFork   = VerifyStatus{Code: 0x202, Msg: "verify failed because of impossible fork detected"}
+
+	// StatusUncertain means verify node can't give a certain result of the request.
+	StatusUncertain    = VerifyStatus{Code: 0x300}
+	StatusBlockTooNew  = VerifyStatus{Code: 0x301, Msg: "can’t verify because of block number larger than current height more than 11"}
+	StatusBlockNewer   = VerifyStatus{Code: 0x302, Msg: "can’t verify because of block number larger than current height"}
+	StatusPossibleFork = VerifyStatus{Code: 0x303, Msg: "can’t verify because of possible fork detected"}
+
+	// StatusUnexpectedError is unexpected internal error.
+	StatusUnexpectedError = VerifyStatus{Code: 0x400, Msg: "can’t verify because of unexpected internal error"}
 )
 
 // A BlockNonce is a 64-bit hash which proves (combined with the
@@ -174,7 +197,7 @@ type Block struct {
 
 	// Td is used by package core to store the total difficulty
 	// of the chain up to and including the block.
-	td *big.Int
+	//td *big.Int
 
 	// These fields are used by package eth to track
 	// inter-peer block relay.
@@ -197,7 +220,7 @@ type extblock struct {
 // are ignored and set to values derived from the given txs, uncles
 // and receipts.
 func NewBlock(header *Header, txs []*Transaction, uncles []*Header, receipts []*Receipt, hasher TrieHasher) *Block {
-	b := &Block{header: CopyHeader(header), td: new(big.Int)}
+	b := &Block{header: CopyHeader(header)}
 
 	// TODO: panic if len(txs) != len(receipts)
 	if len(txs) == 0 {
@@ -234,6 +257,8 @@ func NewBlock(header *Header, txs []*Transaction, uncles []*Header, receipts []*
 func NewBlockWithHeader(header *Header) *Block {
 	return &Block{header: CopyHeader(header)}
 }
+
+func (b *Block) SetRoot(root common.Hash) { b.header.Root = root }
 
 // CopyHeader creates a deep copy of a block header to prevent side effects from
 // modifying a header variable.
@@ -408,3 +433,52 @@ func HeaderParentHashFromRLP(header []byte) common.Hash {
 	}
 	return common.BytesToHash(parentHash)
 }
+
+type DiffLayer struct {
+	BlockHash common.Hash
+	Number    uint64
+	Receipts  Receipts // Receipts are duplicated stored to simplify the logic
+	Codes     []DiffCode
+	Destructs []common.Address
+	Accounts  []DiffAccount
+	Storages  []DiffStorage
+
+	DiffHash atomic.Value
+}
+type DiffCode struct {
+	Hash common.Hash
+	Code []byte
+}
+
+type DiffAccount struct {
+	Account common.Address
+	Blob    []byte
+}
+
+type DiffStorage struct {
+	Account common.Address
+	Keys    []string
+	Vals    [][]byte
+}
+
+type ExtDiffLayer struct {
+	BlockHash common.Hash
+	Number    uint64
+	Receipts  []*ReceiptForStorage // Receipts are duplicated stored to simplify the logic
+	Codes     []DiffCode
+	Destructs []common.Address
+	Accounts  []DiffAccount
+	Storages  []DiffStorage
+}
+
+type VerifyStatus struct {
+	Code uint16
+	Msg  string
+}
+
+func (storage *DiffStorage) Len() int { return len(storage.Keys) }
+func (storage *DiffStorage) Swap(i, j int) {
+	storage.Keys[i], storage.Keys[j] = storage.Keys[j], storage.Keys[i]
+	storage.Vals[i], storage.Vals[j] = storage.Vals[j], storage.Vals[i]
+}
+func (storage *DiffStorage) Less(i, j int) bool { return storage.Keys[i] < storage.Keys[j] }

@@ -33,7 +33,6 @@ import (
 	"jumbochain.org/accounts/scwallet"
 	"jumbochain.org/accounts/usbwallet"
 	"jumbochain.org/cmd/utils"
-	"jumbochain.org/core/rawdb"
 	"jumbochain.org/eth/ethconfig"
 	"jumbochain.org/internal/ethapi"
 	"jumbochain.org/log"
@@ -48,7 +47,7 @@ var (
 		Name:        "dumpconfig",
 		Usage:       "Show configuration values",
 		ArgsUsage:   "",
-		Flags:       utils.GroupFlags(nodeFlags, rpcFlags),
+		Flags:       append(nodeFlags, rpcFlags...),
 		Category:    "MISCELLANEOUS COMMANDS",
 		Description: `The dumpconfig command shows configuration values.`,
 	}
@@ -154,32 +153,56 @@ func makeConfigNode(ctx *cli.Context) (*node.Node, gethConfig) {
 }
 
 // makeFullNode loads geth configuration and creates the Ethereum backend.
+// func makeFullNode(ctx *cli.Context) (*node.Node, ethapi.Backend) {
+// 	stack, cfg := makeConfigNode(ctx)
+// 	if ctx.GlobalIsSet(utils.OverrideArrowGlacierFlag.Name) {
+// 		cfg.Eth.OverrideArrowGlacier = new(big.Int).SetUint64(ctx.GlobalUint64(utils.OverrideArrowGlacierFlag.Name))
+// 	}
+// 	if ctx.GlobalIsSet(utils.OverrideTerminalTotalDifficulty.Name) {
+// 		cfg.Eth.OverrideTerminalTotalDifficulty = utils.GlobalBig(ctx, utils.OverrideTerminalTotalDifficulty.Name)
+// 	}
+// 	backend, eth := utils.RegisterEthService(stack, &cfg.Eth)
+// 	// Warn users to migrate if they have a legacy freezer format.
+// 	if eth != nil && !ctx.GlobalIsSet(utils.IgnoreLegacyReceiptsFlag.Name) {
+// 		firstIdx := uint64(0)
+// 		// Hack to speed up check for mainnet because we know
+// 		// the first non-empty block.
+// 		ghash := rawdb.ReadCanonicalHash(eth.ChainDb(), 0)
+// 		if cfg.Eth.NetworkId == 1 && ghash == params.MainnetGenesisHash {
+// 			firstIdx = 46147
+// 		}
+// 		isLegacy, _, err := dbHasLegacyReceipts(eth.ChainDb(), firstIdx)
+// 		if err != nil {
+// 			log.Error("Failed to check db for legacy receipts", "err", err)
+// 		} else if isLegacy {
+// 			stack.Close()
+// 			utils.Fatalf("Database has receipts with a legacy format. Please run `geth db freezer-migrate`.")
+// 		}
+// 	}
+
+// 	// Configure GraphQL if requested
+// 	if ctx.GlobalIsSet(utils.GraphQLEnabledFlag.Name) {
+// 		utils.RegisterGraphQLService(stack, backend, cfg.Node)
+// 	}
+// 	// Add the Ethereum Stats daemon if requested.
+// 	if cfg.Ethstats.URL != "" {
+// 		utils.RegisterEthStatsService(stack, backend, cfg.Ethstats.URL)
+// 	}
+// 	return stack, backend
+// }
+
 func makeFullNode(ctx *cli.Context) (*node.Node, ethapi.Backend) {
 	stack, cfg := makeConfigNode(ctx)
+	// if ctx.GlobalIsSet(utils.OverrideBerlinFlag.Name) {
+	// 	cfg.Eth.OverrideBerlin = new(big.Int).SetUint64(ctx.GlobalUint64(utils.OverrideBerlinFlag.Name))
+	// }
 	if ctx.GlobalIsSet(utils.OverrideArrowGlacierFlag.Name) {
 		cfg.Eth.OverrideArrowGlacier = new(big.Int).SetUint64(ctx.GlobalUint64(utils.OverrideArrowGlacierFlag.Name))
 	}
 	if ctx.GlobalIsSet(utils.OverrideTerminalTotalDifficulty.Name) {
-		cfg.Eth.OverrideTerminalTotalDifficulty = utils.GlobalBig(ctx, utils.OverrideTerminalTotalDifficulty.Name)
+		cfg.Eth.OverrideTerminalTotalDifficulty = new(big.Int).SetUint64(ctx.GlobalUint64(utils.OverrideTerminalTotalDifficulty.Name))
 	}
-	backend, eth := utils.RegisterEthService(stack, &cfg.Eth)
-	// Warn users to migrate if they have a legacy freezer format.
-	if eth != nil && !ctx.GlobalIsSet(utils.IgnoreLegacyReceiptsFlag.Name) {
-		firstIdx := uint64(0)
-		// Hack to speed up check for mainnet because we know
-		// the first non-empty block.
-		ghash := rawdb.ReadCanonicalHash(eth.ChainDb(), 0)
-		if cfg.Eth.NetworkId == 1 && ghash == params.MainnetGenesisHash {
-			firstIdx = 46147
-		}
-		isLegacy, _, err := dbHasLegacyReceipts(eth.ChainDb(), firstIdx)
-		if err != nil {
-			log.Error("Failed to check db for legacy receipts", "err", err)
-		} else if isLegacy {
-			stack.Close()
-			utils.Fatalf("Database has receipts with a legacy format. Please run `geth db freezer-migrate`.")
-		}
-	}
+	backend, _ := utils.RegisterEthService(stack, &cfg.Eth)
 
 	// Configure GraphQL if requested
 	if ctx.GlobalIsSet(utils.GraphQLEnabledFlag.Name) {
@@ -189,6 +212,12 @@ func makeFullNode(ctx *cli.Context) (*node.Node, ethapi.Backend) {
 	if cfg.Ethstats.URL != "" {
 		utils.RegisterEthStatsService(stack, backend, cfg.Ethstats.URL)
 	}
+
+	utils.SetupMetrics(ctx,
+		utils.EnableBuildInfo(gitCommit, gitDate),
+		utils.EnableMinerInfo(ctx, cfg.Eth.Miner),
+		utils.EnableNodeInfo(cfg.Eth.TxPool),
+	)
 	return stack, backend
 }
 

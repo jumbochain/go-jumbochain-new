@@ -85,6 +85,10 @@ type Config struct {
 	// Setting DialRatio to zero defaults it to 3.
 	DialRatio int `toml:",omitempty"`
 
+	// MaxPeersPerIP is the maximum number of peers that can be
+	// connected from a single IP. It must be greater than zero.
+	MaxPeersPerIP int `toml:",omitempty"`
+
 	// NoDiscovery can be used to disable the peer discovery mechanism.
 	// Disabling is useful for protocol debugging (manual topology).
 	NoDiscovery bool
@@ -156,6 +160,9 @@ type Config struct {
 	Logger log.Logger `toml:",omitempty"`
 
 	clock mclock.Clock
+	// MaxPeersPerIP is the maximum number of peers that can be
+	// connected from a single IP. It must be greater than zero.
+	//MaxPeersPerIP int `toml:",omitempty"`
 }
 
 // Server manages all peer connections.

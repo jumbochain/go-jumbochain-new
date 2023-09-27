@@ -19,7 +19,6 @@ package light
 import (
 	"context"
 	"fmt"
-	"math/big"
 	"sync"
 	"time"
 
@@ -315,9 +314,9 @@ func (pool *TxPool) setNewHead(head *types.Header) {
 	pool.relay.NewHead(pool.head, m, r)
 
 	// Update fork indicator by next pending block number
-	next := new(big.Int).Add(head.Number, big.NewInt(1))
-	pool.istanbul = pool.config.IsIstanbul(next)
-	pool.eip2718 = pool.config.IsBerlin(next)
+	// next := new(big.Int).Add(head.Number, big.NewInt(1))
+	// pool.istanbul = pool.config.IsIstanbul(next)
+	// pool.eip2718 = pool.config.IsBerlin(next)
 }
 
 // Stop stops the light transaction pool
@@ -355,6 +354,7 @@ func (pool *TxPool) validateTx(ctx context.Context, tx *types.Transaction) error
 
 	// Validate the transaction sender and it's sig. Throw
 	// if the from fields is invalid.
+	fmt.Println("from address validateTx function", from)
 	if from, err = types.Sender(pool.signer, tx); err != nil {
 		return core.ErrInvalidSender
 	}
@@ -385,7 +385,7 @@ func (pool *TxPool) validateTx(ctx context.Context, tx *types.Transaction) error
 	}
 
 	// Should supply enough intrinsic gas
-	gas, err := core.IntrinsicGas(tx.Data(), tx.AccessList(), tx.To() == nil, true, pool.istanbul)
+	gas, err := core.IntrinsicGas(tx.Data(), tx.AccessList(), tx.To() == nil)
 	if err != nil {
 		return err
 	}

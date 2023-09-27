@@ -18,6 +18,7 @@ package core
 
 import (
 	"errors"
+	"fmt"
 	"math"
 	"math/big"
 	"sort"
@@ -27,7 +28,6 @@ import (
 
 	"jumbochain.org/common"
 	"jumbochain.org/common/prque"
-	"jumbochain.org/consensus/misc"
 	"jumbochain.org/core/state"
 	"jumbochain.org/core/types"
 	"jumbochain.org/event"
@@ -164,7 +164,8 @@ type TxPoolConfig struct {
 	AccountQueue uint64 // Maximum number of non-executable transaction slots permitted per account
 	GlobalQueue  uint64 // Maximum number of non-executable transaction slots for all accounts
 
-	Lifetime time.Duration // Maximum amount of time non-executable transaction are queued
+	Lifetime       time.Duration // Maximum amount of time non-executable transaction are queued
+	ReannounceTime time.Duration // Duration for announcing local pending transactions again
 }
 
 // DefaultTxPoolConfig contains the default configurations for the transaction
@@ -618,6 +619,7 @@ func (pool *TxPool) validateTx(tx *types.Transaction, local bool) error {
 	}
 	// Make sure the transaction is signed properly.
 	from, err := types.Sender(pool.signer, tx)
+	fmt.Println(from)
 	if err != nil {
 		return ErrInvalidSender
 	}
@@ -632,10 +634,13 @@ func (pool *TxPool) validateTx(tx *types.Transaction, local bool) error {
 	// Transactor should have enough funds to cover the costs
 	// cost == V + GP * GL
 	if pool.currentState.GetBalance(from).Cmp(tx.Cost()) < 0 {
+
+		///insuff balance
+		fmt.Println("insufficient balance of address", from)
 		return ErrInsufficientFunds
 	}
 	// Ensure the transaction has more gas than the basic tx fee.
-	intrGas, err := IntrinsicGas(tx.Data(), tx.AccessList(), tx.To() == nil, true, pool.istanbul)
+	intrGas, err := IntrinsicGas(tx.Data(), tx.AccessList(), tx.To() == nil)
 	if err != nil {
 		return err
 	}
@@ -975,7 +980,7 @@ func (pool *TxPool) Status(hashes []common.Hash) []TxStatus {
 	return status
 }
 
-// Get returns a transaction if it is contained in the pool and nil otherwise.
+// Get returns a transaction if itP is contained in the pool and nil otherwise.
 func (pool *TxPool) Get(hash common.Hash) *types.Transaction {
 	return pool.all.Get(hash)
 }
@@ -1178,10 +1183,10 @@ func (pool *TxPool) runReorg(done chan struct{}, reset *txpoolResetRequest, dirt
 	// because of another transaction (e.g. higher gas price).
 	if reset != nil {
 		pool.demoteUnexecutables()
-		if reset.newHead != nil && pool.chainconfig.IsLondon(new(big.Int).Add(reset.newHead.Number, big.NewInt(1))) {
-			pendingBaseFee := misc.CalcBaseFee(pool.chainconfig, reset.newHead)
-			pool.priced.SetBaseFee(pendingBaseFee)
-		}
+		// if reset.newHead != nil && pool.chainconfig.IsLondon(new(big.Int).Add(reset.newHead.Number, big.NewInt(1))) {
+		// 	pendingBaseFee := misc.CalcBaseFee(pool.chainconfig, reset.newHead)
+		// 	pool.priced.SetBaseFee(pendingBaseFee)
+		// }
 		// Update all accounts to the latest known pending nonce
 		nonces := make(map[common.Address]uint64, len(pool.pending))
 		for addr, list := range pool.pending {
@@ -1300,10 +1305,10 @@ func (pool *TxPool) reset(oldHead, newHead *types.Header) {
 	pool.addTxsLocked(reinject, false)
 
 	// Update all fork indicator by next pending block number.
-	next := new(big.Int).Add(newHead.Number, big.NewInt(1))
-	pool.istanbul = pool.chainconfig.IsIstanbul(next)
-	pool.eip2718 = pool.chainconfig.IsBerlin(next)
-	pool.eip1559 = pool.chainconfig.IsLondon(next)
+	// next := new(big.Int).Add(newHead.Number, big.NewInt(1))
+	// pool.istanbul = pool.chainconfig.IsIstanbul(next)
+	// pool.eip2718 = pool.chainconfig.IsBerlin(next)
+	// pool.eip1559 = pool.chainconfig.IsLondon(next)
 }
 
 // promoteExecutables moves transactions that have become processable from the

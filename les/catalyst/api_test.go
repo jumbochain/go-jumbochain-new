@@ -65,7 +65,7 @@ func generatePreMergeChain(n int) (*core.Genesis, []*types.Header, []*types.Bloc
 		totalDifficulty.Add(totalDifficulty, b.Difficulty())
 		headers = append(headers, b.Header())
 	}
-	config.TerminalTotalDifficulty = totalDifficulty
+	// config.TerminalTotalDifficulty = totalDifficulty
 
 	return genesis, headers, blocks
 }

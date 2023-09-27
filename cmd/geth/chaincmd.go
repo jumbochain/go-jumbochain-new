@@ -20,9 +20,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net"
 	"os"
+	"path"
 	"runtime"
 	"strconv"
+	"strings"
 	"sync/atomic"
 	"time"
 
@@ -39,6 +42,7 @@ import (
 	"jumbochain.org/log"
 	"jumbochain.org/metrics"
 	"jumbochain.org/node"
+	"jumbochain.org/p2p/enode"
 )
 
 var (
@@ -47,8 +51,10 @@ var (
 		Name:      "init",
 		Usage:     "Bootstrap and initialize a new genesis block",
 		ArgsUsage: "<genesisPath>",
-		Flags:     utils.DatabasePathFlags,
-		Category:  "BLOCKCHAIN COMMANDS",
+		Flags: []cli.Flag{
+			utils.DataDirFlag,
+		},
+		Category: "BLOCKCHAIN COMMANDS",
 		Description: `
 The init command initializes a new genesis block and definition for the network.
 This is a destructive action and changes the network in which you will be
@@ -56,13 +62,32 @@ participating.
 
 It expects the genesis file as argument.`,
 	}
+	initNetworkCommand = cli.Command{
+		Action:    utils.MigrateFlags(initNetwork),
+		Name:      "init-network",
+		Usage:     "Bootstrap and initialize a new genesis block, and nodekey, config files for network nodes",
+		ArgsUsage: "<genesisPath>",
+		Flags: []cli.Flag{
+			utils.InitNetworkDir,
+			utils.InitNetworkPort,
+			utils.InitNetworkSize,
+			utils.InitNetworkIps,
+			configFileFlag,
+		},
+		Category: "BLOCKCHAIN COMMANDS",
+		Description: `
+The init-network command initializes a new genesis block, definition for the network, config files for network nodes.
+It expects the genesis file as argument.`,
+	}
 	dumpGenesisCommand = cli.Command{
 		Action:    utils.MigrateFlags(dumpGenesis),
 		Name:      "dumpgenesis",
 		Usage:     "Dumps genesis block JSON configuration to stdout",
 		ArgsUsage: "",
-		Flags:     utils.NetworkFlags,
-		Category:  "BLOCKCHAIN COMMANDS",
+		Flags: []cli.Flag{
+			utils.MainnetFlag,
+		},
+		Category: "BLOCKCHAIN COMMANDS",
 		Description: `
 The dumpgenesis command dumps the genesis block configuration in JSON format to stdout.`,
 	}
@@ -71,7 +96,8 @@ The dumpgenesis command dumps the genesis block configuration in JSON format to 
 		Name:      "import",
 		Usage:     "Import a blockchain file",
 		ArgsUsage: "<filename> (<filename 2> ... <filename N>) ",
-		Flags: append([]cli.Flag{
+		Flags: []cli.Flag{
+			utils.DataDirFlag,
 			utils.CacheFlag,
 			utils.SyncModeFlag,
 			utils.GCModeFlag,
@@ -93,7 +119,7 @@ The dumpgenesis command dumps the genesis block configuration in JSON format to 
 			utils.MetricsInfluxDBBucketFlag,
 			utils.MetricsInfluxDBOrganizationFlag,
 			utils.TxLookupLimitFlag,
-		}, utils.DatabasePathFlags...),
+		},
 		Category: "BLOCKCHAIN COMMANDS",
 		Description: `
 The import command imports blocks from an RLP-encoded form. The form can be one file
@@ -107,10 +133,11 @@ processing will proceed even if an individual RLP-file import failure occurs.`,
 		Name:      "export",
 		Usage:     "Export blockchain into file",
 		ArgsUsage: "<filename> [<blockNumFirst> <blockNumLast>]",
-		Flags: append([]cli.Flag{
+		Flags: []cli.Flag{
+			utils.DataDirFlag,
 			utils.CacheFlag,
 			utils.SyncModeFlag,
-		}, utils.DatabasePathFlags...),
+		},
 		Category: "BLOCKCHAIN COMMANDS",
 		Description: `
 Requires a first argument of the file to write to.
@@ -124,10 +151,11 @@ be gzipped.`,
 		Name:      "import-preimages",
 		Usage:     "Import the preimage database from an RLP stream",
 		ArgsUsage: "<datafile>",
-		Flags: append([]cli.Flag{
+		Flags: []cli.Flag{
+			utils.DataDirFlag,
 			utils.CacheFlag,
 			utils.SyncModeFlag,
-		}, utils.DatabasePathFlags...),
+		},
 		Category: "BLOCKCHAIN COMMANDS",
 		Description: `
 The import-preimages command imports hash preimages from an RLP encoded stream.
@@ -139,10 +167,11 @@ It's deprecated, please use "geth db import" instead.
 		Name:      "export-preimages",
 		Usage:     "Export the preimage database into an RLP stream",
 		ArgsUsage: "<dumpfile>",
-		Flags: append([]cli.Flag{
+		Flags: []cli.Flag{
+			utils.DataDirFlag,
 			utils.CacheFlag,
 			utils.SyncModeFlag,
-		}, utils.DatabasePathFlags...),
+		},
 		Category: "BLOCKCHAIN COMMANDS",
 		Description: `
 The export-preimages command exports hash preimages to an RLP encoded stream.
@@ -154,7 +183,8 @@ It's deprecated, please use "geth db export" instead.
 		Name:      "dump",
 		Usage:     "Dump a specific block from storage",
 		ArgsUsage: "[? <blockHash> | <blockNum>]",
-		Flags: append([]cli.Flag{
+		Flags: []cli.Flag{
+			utils.DataDirFlag,
 			utils.CacheFlag,
 			utils.IterativeOutputFlag,
 			utils.ExcludeCodeFlag,
@@ -162,7 +192,7 @@ It's deprecated, please use "geth db export" instead.
 			utils.IncludeIncompletesFlag,
 			utils.StartKeyFlag,
 			utils.DumpLimitFlag,
-		}, utils.DatabasePathFlags...),
+		},
 		Category: "BLOCKCHAIN COMMANDS",
 		Description: `
 This command dumps out the state for a given block (or latest, if none provided).
@@ -191,8 +221,9 @@ func initGenesis(ctx *cli.Context) error {
 	// Open and initialise both full and light databases
 	stack, _ := makeConfigNode(ctx)
 	defer stack.Close()
+
 	for _, name := range []string{"chaindata", "lightchaindata"} {
-		chaindb, err := stack.OpenDatabaseWithFreezer(name, 0, 0, ctx.GlobalString(utils.AncientFlag.Name), "", false)
+		chaindb, err := stack.OpenDatabase(name, 0, 0, "", false)
 		if err != nil {
 			utils.Fatalf("Failed to open database: %v", err)
 		}
@@ -202,6 +233,98 @@ func initGenesis(ctx *cli.Context) error {
 		}
 		chaindb.Close()
 		log.Info("Successfully wrote genesis state", "database", name, "hash", hash)
+	}
+	return nil
+}
+
+// initNetwork will bootstrap and initialize a new genesis block, and nodekey, config files for network nodes
+func initNetwork(ctx *cli.Context) error {
+	initDir := ctx.String(utils.InitNetworkDir.Name)
+	if len(initDir) == 0 {
+		utils.Fatalf("init.dir is required")
+	}
+	size := ctx.Int(utils.InitNetworkSize.Name)
+	port := ctx.Int(utils.InitNetworkPort.Name)
+	ipStr := ctx.String(utils.InitNetworkIps.Name)
+	cfgFile := ctx.String(configFileFlag.Name)
+
+	if len(cfgFile) == 0 {
+		utils.Fatalf("config file is required")
+	}
+	var ips []string
+	if len(ipStr) != 0 {
+		ips = strings.Split(ipStr, ",")
+		if len(ips) != size {
+			utils.Fatalf("mismatch of size and length of ips")
+		}
+		for i := 0; i < size; i++ {
+			_, err := net.ResolveIPAddr("", ips[i])
+			if err != nil {
+				utils.Fatalf("invalid format of ip")
+				return err
+			}
+		}
+	} else {
+		ips = make([]string, size)
+		for i := 0; i < size; i++ {
+			ips[i] = "127.0.0.1"
+		}
+	}
+
+	// Make sure we have a valid genesis JSON
+	genesisPath := ctx.Args().First()
+	if len(genesisPath) == 0 {
+		utils.Fatalf("Must supply path to genesis JSON file")
+	}
+	file, err := os.Open(genesisPath)
+	if err != nil {
+		utils.Fatalf("Failed to read genesis file: %v", err)
+	}
+	defer file.Close()
+
+	genesis := new(core.Genesis)
+	if err := json.NewDecoder(file).Decode(genesis); err != nil {
+		utils.Fatalf("invalid genesis file: %v", err)
+	}
+	enodes := make([]*enode.Node, size)
+
+	// load config
+	var config gethConfig
+	err = loadConfig(cfgFile, &config)
+	if err != nil {
+		return err
+	}
+	config.Eth.Genesis = genesis
+
+	for i := 0; i < size; i++ {
+		stack, err := node.New(&config.Node)
+		if err != nil {
+			return err
+		}
+		stack.Config().DataDir = path.Join(initDir, fmt.Sprintf("node%d", i))
+		pk := stack.Config().NodeKey()
+		enodes[i] = enode.NewV4(&pk.PublicKey, net.ParseIP(ips[i]), port, port)
+	}
+
+	for i := 0; i < size; i++ {
+		config.Node.HTTPHost = ips[i]
+		config.Node.P2P.StaticNodes = make([]*enode.Node, size-1)
+		for j := 0; j < i; j++ {
+			config.Node.P2P.StaticNodes[j] = enodes[j]
+		}
+		for j := i + 1; j < size; j++ {
+			config.Node.P2P.StaticNodes[j-1] = enodes[j]
+		}
+		out, err := tomlSettings.Marshal(config)
+		if err != nil {
+			return err
+		}
+		dump, err := os.OpenFile(path.Join(initDir, fmt.Sprintf("node%d", i), "config.toml"), os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
+		if err != nil {
+			return err
+		}
+		defer dump.Close()
+		dump.Write(out)
 	}
 	return nil
 }
@@ -344,7 +467,7 @@ func importPreimages(ctx *cli.Context) error {
 	stack, _ := makeConfigNode(ctx)
 	defer stack.Close()
 
-	db := utils.MakeChainDatabase(ctx, stack, false)
+	db := utils.MakeChainDatabase(ctx, stack, false, false)
 	start := time.Now()
 
 	if err := utils.ImportPreimages(db, ctx.Args().First()); err != nil {
@@ -362,7 +485,7 @@ func exportPreimages(ctx *cli.Context) error {
 	stack, _ := makeConfigNode(ctx)
 	defer stack.Close()
 
-	db := utils.MakeChainDatabase(ctx, stack, true)
+	db := utils.MakeChainDatabase(ctx, stack, true, false)
 	start := time.Now()
 
 	if err := utils.ExportPreimages(db, ctx.Args().First()); err != nil {
@@ -373,7 +496,7 @@ func exportPreimages(ctx *cli.Context) error {
 }
 
 func parseDumpConfig(ctx *cli.Context, stack *node.Node) (*state.DumpConfig, ethdb.Database, common.Hash, error) {
-	db := utils.MakeChainDatabase(ctx, stack, true)
+	db := utils.MakeChainDatabase(ctx, stack, true, false)
 	var header *types.Header
 	if ctx.NArg() > 1 {
 		return nil, nil, common.Hash{}, fmt.Errorf("expected 1 argument (number or hash), got %d", ctx.NArg())

@@ -40,6 +40,14 @@ func (t *table) Close() error {
 	return nil
 }
 
+func (t *table) DiffStore() ethdb.KeyValueStore {
+	return nil
+}
+
+func (t *table) SetDiffStore(diff ethdb.KeyValueStore) {
+	panic("not implement")
+}
+
 // Has retrieves if a prefixed version of a key is present in the database.
 func (t *table) Has(key []byte) (bool, error) {
 	return t.db.Has(append([]byte(t.prefix), key...))
@@ -48,6 +56,12 @@ func (t *table) Has(key []byte) (bool, error) {
 // Get retrieves the given prefixed key if it's present in the database.
 func (t *table) Get(key []byte) ([]byte, error) {
 	return t.db.Get(append([]byte(t.prefix), key...))
+}
+
+// TruncateAncients is a noop passthrough that just forwards the request to the underlying
+// database.
+func (t *table) TruncateAncients(items uint64) error {
+	return t.db.TruncateAncients(items)
 }
 
 // HasAncient is a noop passthrough that just forwards the request to the underlying
@@ -76,8 +90,12 @@ func (t *table) Ancients() (uint64, error) {
 
 // Tail is a noop passthrough that just forwards the request to the underlying
 // database.
-func (t *table) Tail() (uint64, error) {
-	return t.db.Tail()
+// func (t *table) Tail() (uint64, error) {
+// 	return t.db.Tail()
+// }
+
+func (t *table) ItemAmountInAncient() (uint64, error) {
+	return t.db.ItemAmountInAncient()
 }
 
 // AncientSize is a noop passthrough that just forwards the request to the underlying
@@ -91,21 +109,21 @@ func (t *table) ModifyAncients(fn func(ethdb.AncientWriteOp) error) (int64, erro
 	return t.db.ModifyAncients(fn)
 }
 
-func (t *table) ReadAncients(fn func(reader ethdb.AncientReaderOp) error) (err error) {
+func (t *table) ReadAncients(fn func(reader ethdb.AncientReader) error) (err error) {
 	return t.db.ReadAncients(fn)
 }
 
 // TruncateHead is a noop passthrough that just forwards the request to the underlying
 // database.
-func (t *table) TruncateHead(items uint64) error {
-	return t.db.TruncateHead(items)
-}
+// func (t *table) TruncateHead(items uint64) error {
+// 	return t.db.TruncateHead(items)
+// }
 
 // TruncateTail is a noop passthrough that just forwards the request to the underlying
 // database.
-func (t *table) TruncateTail(items uint64) error {
-	return t.db.TruncateTail(items)
-}
+// func (t *table) TruncateTail(items uint64) error {
+// 	return t.db.TruncateTail(items)
+// }
 
 // Sync is a noop passthrough that just forwards the request to the underlying
 // database.
@@ -113,16 +131,16 @@ func (t *table) Sync() error {
 	return t.db.Sync()
 }
 
-// MigrateTable processes the entries in a given table in sequence
-// converting them to a new format if they're of an old format.
-func (t *table) MigrateTable(kind string, convert convertLegacyFn) error {
-	return t.db.MigrateTable(kind, convert)
-}
+// // MigrateTable processes the entries in a given table in sequence
+// // converting them to a new format if they're of an old format.
+// func (t *table) MigrateTable(kind string, convert convertLegacyFn) error {
+// 	return t.db.MigrateTable(kind, convert)
+// }
 
 // AncientDatadir returns the ancient datadir of the underlying database.
-func (t *table) AncientDatadir() (string, error) {
-	return t.db.AncientDatadir()
-}
+// func (t *table) AncientDatadir() (string, error) {
+// 	return t.db.AncientDatadir()
+// }
 
 // Put inserts the given value into the database at a prefixed version of the
 // provided key.

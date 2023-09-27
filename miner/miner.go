@@ -40,20 +40,22 @@ import (
 type Backend interface {
 	BlockChain() *core.BlockChain
 	TxPool() *core.TxPool
-	StateAtBlock(block *types.Block, reexec uint64, base *state.StateDB, checkLive bool, preferDisk bool) (statedb *state.StateDB, err error)
 }
 
 // Config is the configuration parameters of mining.
 type Config struct {
-	Etherbase  common.Address `toml:",omitempty"` // Public address for block mining rewards (default = first account)
-	Notify     []string       `toml:",omitempty"` // HTTP URL list to be notified of new work packages (only useful in ethash).
-	NotifyFull bool           `toml:",omitempty"` // Notify with pending block headers instead of work packages
-	ExtraData  hexutil.Bytes  `toml:",omitempty"` // Block extra data set by the miner
-	GasFloor   uint64         // Target gas floor for mined blocks.
-	GasCeil    uint64         // Target gas ceiling for mined blocks.
-	GasPrice   *big.Int       // Minimum gas price for mining a transaction
-	Recommit   time.Duration  // The time interval for miner to re-create mining work.
-	Noverify   bool           // Disable remote mining solution verification(only useful in ethash).
+	Etherbase              common.Address `toml:",omitempty"` // Public address for block mining rewards (default = first account)
+	Notify                 []string       `toml:",omitempty"` // HTTP URL list to be notified of new work packages (only useful in ethash).
+	NotifyFull             bool           `toml:",omitempty"` // Notify with pending block headers instead of work packages
+	ExtraData              hexutil.Bytes  `toml:",omitempty"` // Block extra data set by the miner
+	DelayLeftOver          time.Duration  // Time reserved to finalize a block(calculate root, distribute income...)
+	GasFloor               uint64         // Target gas floor for mined blocks.
+	GasCeil                uint64         // Target gas ceiling for mined blocks.
+	GasPrice               *big.Int       // Minimum gas price for mining a transaction
+	Recommit               time.Duration  // The time interval for miner to re-create mining work.
+	Noverify               bool           // Disable remote mining solution verification(only useful in ethash).
+	VoteEnable             bool           // Whether to vote when mining
+	DisableVoteAttestation bool           // Whether to skip assembling vote attestation
 }
 
 // Miner creates blocks and searches for proof-of-work values.
@@ -78,7 +80,7 @@ func New(eth Backend, config *Config, chainConfig *params.ChainConfig, mux *even
 		exitCh:  make(chan struct{}),
 		startCh: make(chan common.Address),
 		stopCh:  make(chan struct{}),
-		worker:  newWorker(config, chainConfig, engine, eth, mux, isLocalBlock, true),
+		worker:  newWorker(config, chainConfig, engine, eth, mux, isLocalBlock, false),
 	}
 	miner.wg.Add(1)
 	go miner.update()
@@ -190,7 +192,22 @@ func (miner *Miner) SetRecommitInterval(interval time.Duration) {
 
 // Pending returns the currently pending block and associated state.
 func (miner *Miner) Pending() (*types.Block, *state.StateDB) {
-	return miner.worker.pending()
+	if miner.worker.isRunning() {
+		pendingBlock, pendingState := miner.worker.pending()
+		if pendingState != nil && pendingBlock != nil {
+			return pendingBlock, pendingState
+		}
+	}
+	// fallback to latest block
+	block := miner.worker.chain.CurrentBlock()
+	if block == nil {
+		return nil, nil
+	}
+	stateDb, err := miner.worker.chain.StateAt(block.Root())
+	if err != nil {
+		return nil, nil
+	}
+	return block, stateDb
 }
 
 // PendingBlock returns the currently pending block.
@@ -199,7 +216,14 @@ func (miner *Miner) Pending() (*types.Block, *state.StateDB) {
 // simultaneously, please use Pending(), as the pending state can
 // change between multiple method calls
 func (miner *Miner) PendingBlock() *types.Block {
-	return miner.worker.pendingBlock()
+	if miner.worker.isRunning() {
+		pendingBlock := miner.worker.pendingBlock()
+		if pendingBlock != nil {
+			return pendingBlock
+		}
+	}
+	// fallback to latest block
+	return miner.worker.chain.CurrentBlock()
 }
 
 // PendingBlockAndReceipts returns the currently pending block and corresponding receipts.
@@ -218,49 +242,14 @@ func (miner *Miner) SetGasCeil(ceil uint64) {
 	miner.worker.setGasCeil(ceil)
 }
 
-// EnablePreseal turns on the preseal mining feature. It's enabled by default.
-// Note this function shouldn't be exposed to API, it's unnecessary for users
-// (miners) to actually know the underlying detail. It's only for outside project
-// which uses this library.
-func (miner *Miner) EnablePreseal() {
-	miner.worker.enablePreseal()
-}
-
-// DisablePreseal turns off the preseal mining feature. It's necessary for some
-// fake consensus engine which can seal blocks instantaneously.
-// Note this function shouldn't be exposed to API, it's unnecessary for users
-// (miners) to actually know the underlying detail. It's only for outside project
-// which uses this library.
-func (miner *Miner) DisablePreseal() {
-	miner.worker.disablePreseal()
+// GetSealingBlock retrieves a sealing block based on the given parameters.
+// The returned block is not sealed but all other fields should be filled.
+func (miner *Miner) GetSealingBlock(parent common.Hash, timestamp uint64, coinbase common.Address, random common.Hash) (*types.Block, error) {
+	return miner.worker.getSealingBlock(parent, timestamp, coinbase, random)
 }
 
 // SubscribePendingLogs starts delivering logs from pending transactions
 // to the given channel.
 func (miner *Miner) SubscribePendingLogs(ch chan<- []*types.Log) event.Subscription {
 	return miner.worker.pendingLogsFeed.Subscribe(ch)
-}
-
-// GetSealingBlockAsync requests to generate a sealing block according to the
-// given parameters. Regardless of whether the generation is successful or not,
-// there is always a result that will be returned through the result channel.
-// The difference is that if the execution fails, the returned result is nil
-// and the concrete error is dropped silently.
-func (miner *Miner) GetSealingBlockAsync(parent common.Hash, timestamp uint64, coinbase common.Address, random common.Hash, noTxs bool) (chan *types.Block, error) {
-	resCh, _, err := miner.worker.getSealingBlock(parent, timestamp, coinbase, random, noTxs)
-	if err != nil {
-		return nil, err
-	}
-	return resCh, nil
-}
-
-// GetSealingBlockSync creates a sealing block according to the given parameters.
-// If the generation is failed or the underlying work is already closed, an error
-// will be returned.
-func (miner *Miner) GetSealingBlockSync(parent common.Hash, timestamp uint64, coinbase common.Address, random common.Hash, noTxs bool) (*types.Block, error) {
-	resCh, errCh, err := miner.worker.getSealingBlock(parent, timestamp, coinbase, random, noTxs)
-	if err != nil {
-		return nil, err
-	}
-	return <-resCh, <-errCh
 }

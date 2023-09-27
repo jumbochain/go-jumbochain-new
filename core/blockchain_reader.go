@@ -25,7 +25,6 @@ import (
 	"jumbochain.org/core/state"
 	"jumbochain.org/core/state/snapshot"
 	"jumbochain.org/core/types"
-	"jumbochain.org/core/vm"
 	"jumbochain.org/event"
 	"jumbochain.org/params"
 	"jumbochain.org/rlp"
@@ -43,16 +42,40 @@ func (bc *BlockChain) CurrentBlock() *types.Block {
 	return bc.currentBlock.Load().(*types.Block)
 }
 
+// CurrentFinalBlock retrieves the current finalized block of the canonical
+// chain. The block is retrieved from the blockchain's internal cache.
+func (bc *BlockChain) CurrentFinalBlock() *types.Header {
+	if p, ok := bc.engine.(consensus.PoSA); ok {
+		currentHeader := bc.CurrentHeader()
+		if currentHeader == nil {
+			return nil
+		}
+		return p.GetFinalizedHeader(bc, currentHeader)
+	}
+
+	return nil
+}
+
+// CurrentSafeBlock retrieves the current safe block of the canonical
+// chain. The block is retrieved from the blockchain's internal cache.
+func (bc *BlockChain) CurrentSafeBlock() *types.Header {
+	if p, ok := bc.engine.(consensus.PoSA); ok {
+		currentHeader := bc.CurrentHeader()
+		if currentHeader == nil {
+			return nil
+		}
+		_, justifiedBlockHash, err := p.GetJustifiedNumberAndHash(bc, currentHeader)
+		if err == nil {
+			return bc.GetHeaderByHash(justifiedBlockHash)
+		}
+	}
+	return nil
+}
+
 // CurrentFastBlock retrieves the current fast-sync head block of the canonical
 // chain. The block is retrieved from the blockchain's internal cache.
 func (bc *BlockChain) CurrentFastBlock() *types.Block {
 	return bc.currentFastBlock.Load().(*types.Block)
-}
-
-// CurrentFinalizedBlock retrieves the current finalized block of the canonical
-// chain. The block is retrieved from the blockchain's internal cache.
-func (bc *BlockChain) CurrentFinalizedBlock() *types.Block {
-	return bc.currentFinalizedBlock.Load().(*types.Block)
 }
 
 // HasHeader checks if a block header is present in the database or not, caching
@@ -265,6 +288,15 @@ func (bc *BlockChain) GetTd(hash common.Hash, number uint64) *big.Int {
 
 // HasState checks if state trie is fully present in the database or not.
 func (bc *BlockChain) HasState(hash common.Hash) bool {
+	if bc.stateCache.NoTries() {
+		return bc.snaps != nil && bc.snaps.Snapshot(hash) != nil
+	}
+	if bc.pipeCommit && bc.snaps != nil {
+		// If parent snap is pending on verification, treat it as state exist
+		if s := bc.snaps.Snapshot(hash); s != nil && !s.Verified() {
+			return true
+		}
+	}
 	_, err := bc.stateCache.OpenTrie(hash)
 	return err == nil
 }
@@ -350,11 +382,6 @@ func (bc *BlockChain) Genesis() *types.Block {
 	return bc.genesisBlock
 }
 
-// GetVMConfig returns the block chain VM config.
-func (bc *BlockChain) GetVMConfig() *vm.Config {
-	return &bc.vmConfig
-}
-
 // SetTxLookupLimit is responsible for updating the txlookup limit to the
 // original one stored in db if the new mismatches with the old one.
 func (bc *BlockChain) SetTxLookupLimit(limit uint64) {
@@ -382,6 +409,11 @@ func (bc *BlockChain) SubscribeChainHeadEvent(ch chan<- ChainHeadEvent) event.Su
 	return bc.scope.Track(bc.chainHeadFeed.Subscribe(ch))
 }
 
+// SubscribeChainBlockEvent registers a subscription of ChainBlockEvent.
+func (bc *BlockChain) SubscribeChainBlockEvent(ch chan<- ChainHeadEvent) event.Subscription {
+	return bc.scope.Track(bc.chainBlockFeed.Subscribe(ch))
+}
+
 // SubscribeChainSideEvent registers a subscription of ChainSideEvent.
 func (bc *BlockChain) SubscribeChainSideEvent(ch chan<- ChainSideEvent) event.Subscription {
 	return bc.scope.Track(bc.chainSideFeed.Subscribe(ch))
@@ -396,4 +428,9 @@ func (bc *BlockChain) SubscribeLogsEvent(ch chan<- []*types.Log) event.Subscript
 // block processing has started while false means it has stopped.
 func (bc *BlockChain) SubscribeBlockProcessingEvent(ch chan<- bool) event.Subscription {
 	return bc.scope.Track(bc.blockProcFeed.Subscribe(ch))
+}
+
+// SubscribeFinalizedHeaderEvent registers a subscription of FinalizedHeaderEvent.
+func (bc *BlockChain) SubscribeFinalizedHeaderEvent(ch chan<- FinalizedHeaderEvent) event.Subscription {
+	return bc.scope.Track(bc.finalizedHeaderFeed.Subscribe(ch))
 }

@@ -650,3 +650,6 @@ func (t *Trie) Reset() {
 	t.unhashed = 0
 	t.tracer.reset()
 }
+func (t *Trie) Size() int {
+	return estimateSize(t.root)
+}

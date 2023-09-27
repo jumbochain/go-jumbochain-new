@@ -30,10 +30,12 @@ import (
 	"jumbochain.org/consensus/beacon"
 	"jumbochain.org/consensus/clique"
 	"jumbochain.org/consensus/ethash"
+	"jumbochain.org/consensus/jumbo"
 	"jumbochain.org/core"
 	"jumbochain.org/eth/downloader"
 	"jumbochain.org/eth/gasprice"
 	"jumbochain.org/ethdb"
+	"jumbochain.org/internal/ethapi"
 	"jumbochain.org/log"
 	"jumbochain.org/miner"
 	"jumbochain.org/node"
@@ -92,7 +94,8 @@ var Defaults = Config{
 	RPCGasCap:     50000000,
 	RPCEVMTimeout: 5 * time.Second,
 	GPO:           FullNodeGPO,
-	RPCTxFeeCap:   1, // 1 ether
+	RPCTxFeeCap:   0, // 1 ether
+
 }
 
 func init() {
@@ -120,9 +123,39 @@ func init() {
 
 // Config contains configuration options for of the ETH and LES protocols.
 type Config struct {
+	//TrustDiscoveryURLs []string
+	//BscDiscoveryURLs   []string
+	//DatabaseDiff       string
 	// The genesis block, which is inserted if the database is empty.
 	// If nil, the Ethereum main net block is used.
 	Genesis *core.Genesis `toml:",omitempty"`
+
+		// DisablePeerTxBroadcast is an optional config and disabled by default, and usually you do not need it.
+	// When this flag is enabled, you are requesting remote peers to stop broadcasting new transactions to you, and
+	// it does not mean that your node will stop broadcasting transactions to remote peers.
+	// If your node does care about new mempool transactions (e.g., running rpc services without the need of mempool
+	// transactions) or is continuously under high pressure (e.g., mempool is always full), then you can consider
+	// to turn it on.
+	DisablePeerTxBroadcast bool
+
+	// PersistDiff bool
+	// DiffBlock   uint64
+	// PruneAncientData is an optional config and disabled by default, and usually you do not need it.
+	// When this flag is enabled, only keep the latest 9w blocks' data, the older blocks' data will be
+	// pruned instead of being dumped to freezerdb, the pruned data includes CanonicalHash, Header, Block,
+	// Receipt and TotalDifficulty.
+	// Notice: the PruneAncientData once be turned on, the get/chaindata/ancient dir will be removed,
+	// if restart without the pruneancient flag, the ancient data will start with the previous point that
+	// the oldest unpruned block number.
+	// PruneAncientData bool
+
+	// DirectBroadcast     bool
+	// DisableSnapProtocol bool //Whether disable snap protocol
+	// DisableDiffProtocol bool //Whether disable diff protocol
+	// EnableTrustProtocol bool //Whether enable trust protocol
+	// DiffSync            bool // Whether support diff sync
+	// PipeCommit          bool
+	// RangeLimit          bool
 
 	// Protocol options
 	NetworkId uint64 // Network ID to use for selecting peers to connect to
@@ -130,11 +163,20 @@ type Config struct {
 
 	// This can be set to list of enrtree:// URLs which will be queried for
 	// for nodes to connect to.
-	EthDiscoveryURLs  []string
-	SnapDiscoveryURLs []string
+	EthDiscoveryURLs   []string
+	SnapDiscoveryURLs  []string
+	TrustDiscoveryURLs []string
+	BscDiscoveryURLs   []string
 
-	NoPruning  bool // Whether to disable pruning and flush everything to disk
-	NoPrefetch bool // Whether to disable prefetching and only load state on demand
+	NoPruning           bool // Whether to disable pruning and flush everything to disk
+	DisableSnapProtocol bool //Whether disable snap protocol
+	DisableDiffProtocol bool //Whether disable diff protocol
+	EnableTrustProtocol bool //Whether enable trust protocol
+	DisableBscProtocol  bool //Whether disable bsc protocol
+	DiffSync            bool // Whether support diff sync
+	NoPrefetch          bool // Whether to disable prefetching and only load state on demand
+	PipeCommit          bool
+	RangeLimit          bool
 
 	TxLookupLimit uint64 `toml:",omitempty"` // The maximum number of blocks from head whose tx indices are reserved.
 
@@ -142,6 +184,9 @@ type Config struct {
 	// canonical chain of all remote peers. Setting the option makes geth verify the
 	// presence of these blocks for every new peer connection.
 	RequiredBlocks map[uint64]common.Hash `toml:"-"`
+
+	// Whitelist of required block number -> hash values to accept
+	//Whitelist map[uint64]common.Hash `toml:"-"`
 
 	// Light client options
 	LightServ          int  `toml:",omitempty"` // Maximum percentage of time allowed for serving LES requests
@@ -151,7 +196,7 @@ type Config struct {
 	LightNoPrune       bool `toml:",omitempty"` // Whether to disable light chain pruning
 	LightNoSyncServe   bool `toml:",omitempty"` // Whether to serve light clients before syncing
 	SyncFromCheckpoint bool `toml:",omitempty"` // Whether to sync the header chain from the configured checkpoint
-
+	//TriesInMemory      uint64
 	// Ultra Light client options
 	UltraLightServers      []string `toml:",omitempty"` // List of trusted ultra light servers
 	UltraLightFraction     int      `toml:",omitempty"` // Percentage of trusted servers to accept an announcement
@@ -162,14 +207,31 @@ type Config struct {
 	DatabaseHandles    int  `toml:"-"`
 	DatabaseCache      int
 	DatabaseFreezer    string
+	DatabaseDiff       string
+	PersistDiff        bool
+	DiffBlock          uint64
+
+	// PruneAncientData is an optional config and disabled by default, and usually you do not need it.
+	// When this flag is enabled, only keep the latest 9w blocks' data, the older blocks' data will be
+	// pruned instead of being dumped to freezerdb, the pruned data includes CanonicalHash, Header, Block,
+	// Receipt and TotalDifficulty.
+	// Notice: the PruneAncientData once be turned on, the get/chaindata/ancient dir will be removed,
+	// if restart without the pruneancient flag, the ancient data will start with the previous point that
+	// the oldest unpruned block number.
+	PruneAncientData bool
 
 	TrieCleanCache          int
 	TrieCleanCacheJournal   string        `toml:",omitempty"` // Disk journal directory for trie cache to survive node restarts
 	TrieCleanCacheRejournal time.Duration `toml:",omitempty"` // Time interval to regenerate the journal for clean cache
 	TrieDirtyCache          int
 	TrieTimeout             time.Duration
-	SnapshotCache           int
-	Preimages               bool
+	TriesVerifyMode         core.VerifyMode
+
+	TriesInMemory uint64
+	SnapshotCache int
+	Preimages     bool
+
+	DirectBroadcast bool
 
 	// Mining options
 	Miner miner.Config
@@ -210,11 +272,17 @@ type Config struct {
 
 	// OverrideTerminalTotalDifficulty (TODO: remove after the fork)
 	OverrideTerminalTotalDifficulty *big.Int `toml:",omitempty"`
+
+	// Whitelist of required block number -> hash values to accept
+	Whitelist map[uint64]common.Hash `toml:"-"`
 }
 
 // CreateConsensusEngine creates a consensus engine for the given chain configuration.
-func CreateConsensusEngine(stack *node.Node, chainConfig *params.ChainConfig, config *ethash.Config, notify []string, noverify bool, db ethdb.Database) consensus.Engine {
+func CreateConsensusEngine(stack *node.Node, chainConfig *params.ChainConfig, config *ethash.Config, notify []string, noverify bool, db ethdb.Database, ee *ethapi.PublicBlockChainAPI, genesisHash common.Hash) consensus.Engine {
 	// If proof-of-authority is requested, set it up
+	if chainConfig.JumboConsensus != nil {
+		return jumbo.New(chainConfig, db, ee, genesisHash)
+	}
 	var engine consensus.Engine
 	if chainConfig.Clique != nil {
 		engine = clique.New(chainConfig.Clique, db)

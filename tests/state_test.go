@@ -196,14 +196,14 @@ func runBenchmark(b *testing.B, t *StateTest) {
 			_, statedb := MakePreState(rawdb.NewMemoryDatabase(), t.json.Pre, false)
 
 			var baseFee *big.Int
-			if config.IsLondon(new(big.Int)) {
-				baseFee = t.json.Env.BaseFee
-				if baseFee == nil {
-					// Retesteth uses `0x10` for genesis baseFee. Therefore, it defaults to
-					// parent - 2 : 0xa as the basefee for 'this' context.
-					baseFee = big.NewInt(0x0a)
-				}
-			}
+			// if config.IsLondon(new(big.Int)) {
+			// 	baseFee = t.json.Env.BaseFee
+			// 	if baseFee == nil {
+			// 		// Retesteth uses `0x10` for genesis baseFee. Therefore, it defaults to
+			// 		// parent - 2 : 0xa as the basefee for 'this' context.
+			// 		baseFee = big.NewInt(0x0a)
+			// 	}
+			// }
 			post := t.json.Post[subtest.Fork][subtest.Index]
 			msg, err := t.json.Tx.toMessage(post, baseFee)
 			if err != nil {

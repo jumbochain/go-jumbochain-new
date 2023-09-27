@@ -230,7 +230,7 @@ func testGenerateBlockAndImport(t *testing.T, isClique bool) {
 		engine = ethash.NewFaker()
 	}
 
-	chainConfig.LondonBlock = big.NewInt(0)
+	// chainConfig.LondonBlock = big.NewInt(0)
 	w, b := newTestWorker(t, chainConfig, engine, db, 0)
 	defer w.close()
 
@@ -538,7 +538,7 @@ func TestGetSealingWorkClique(t *testing.T) {
 func TestGetSealingWorkPostMerge(t *testing.T) {
 	local := new(params.ChainConfig)
 	*local = *ethashChainConfig
-	local.TerminalTotalDifficulty = big.NewInt(0)
+	// local.TerminalTotalDifficulty = big.NewInt(0)
 	testGetSealingWork(t, local, ethash.NewFaker(), true)
 }
 

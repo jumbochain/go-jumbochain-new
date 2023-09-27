@@ -249,6 +249,19 @@ func (lc *LightChain) GetBody(ctx context.Context, hash common.Hash) (*types.Bod
 	return body, nil
 }
 
+// GetJustifiedNumber returns the highest justified blockNumber on the branch including and before `header`
+func (lc *LightChain) GetJustifiedNumber(header *types.Header) uint64 {
+	if p, ok := lc.engine.(consensus.PoSA); ok {
+		justifiedBlockNumber, _, err := p.GetJustifiedNumberAndHash(lc.hc, header)
+		if err == nil {
+			return justifiedBlockNumber
+		}
+	}
+	// return 0 when err!=nil
+	// so the input `header` will at a disadvantage during reorg
+	return 0
+}
+
 // GetBodyRLP retrieves a block body in RLP encoding from the database or
 // ODR service by hash, caching it if found.
 func (lc *LightChain) GetBodyRLP(ctx context.Context, hash common.Hash) (rlp.RawValue, error) {
@@ -310,6 +323,10 @@ func (lc *LightChain) GetBlockByNumber(ctx context.Context, number uint64) (*typ
 		return nil, err
 	}
 	return lc.GetBlock(ctx, hash, number)
+}
+
+func (lc *LightChain) GetHighestVerifiedHeader() *types.Header {
+	return nil
 }
 
 // Stop stops the blockchain service. If any imports are currently in progress
@@ -608,4 +625,21 @@ func (lc *LightChain) DisableCheckFreq() {
 // EnableCheckFreq enables header validation.
 func (lc *LightChain) EnableCheckFreq() {
 	atomic.StoreInt32(&lc.disableCheckFreq, 0)
+}
+func (lc *LightChain) SetChainHead(header *types.Header) error {
+	lc.chainmu.Lock()
+	defer lc.chainmu.Unlock()
+
+	lc.wg.Add(1)
+	defer lc.wg.Done()
+
+	if err := lc.hc.Reorg([]*types.Header{header}); err != nil {
+		return err
+	}
+	// Emit events
+	block := types.NewBlockWithHeader(header)
+	lc.chainFeed.Send(core.ChainEvent{Block: block, Hash: block.Hash()})
+	lc.chainHeadFeed.Send(core.ChainHeadEvent{Block: block})
+	log.Info("Set the chain head", "number", block.Number(), "hash", block.Hash())
+	return nil
 }

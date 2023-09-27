@@ -53,7 +53,13 @@ type odrDatabase struct {
 func (db *odrDatabase) OpenTrie(root common.Hash) (state.Trie, error) {
 	return &odrTrie{db: db, id: db.id}, nil
 }
+func (db *odrDatabase) NoTries() bool {
+	return false
+}
+func (db *odrDatabase) Purge() {}
 
+func (db *odrDatabase) CacheStorage(_ common.Hash, _ common.Hash, _ state.Trie) {}
+func (db *odrDatabase) CacheAccount(_ common.Hash, _ state.Trie)                {}
 func (db *odrDatabase) OpenStorageTrie(addrHash, root common.Hash) (state.Trie, error) {
 	return &odrTrie{db: db, id: StorageTrieID(db.id, addrHash, root)}, nil
 }

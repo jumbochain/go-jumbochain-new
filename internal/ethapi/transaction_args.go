@@ -79,30 +79,11 @@ func (args *TransactionArgs) setDefaults(ctx context.Context, b Backend) error {
 		return errors.New("both gasPrice and (maxFeePerGas or maxPriorityFeePerGas) specified")
 	}
 	// After london, default to 1559 unless gasPrice is set
-	head := b.CurrentHeader()
+	// head := b.CurrentHeader()
 	// If user specifies both maxPriorityfee and maxFee, then we do not
 	// need to consult the chain for defaults. It's definitely a London tx.
 	if args.MaxPriorityFeePerGas == nil || args.MaxFeePerGas == nil {
 		// In this clause, user left some fields unspecified.
-		if b.ChainConfig().IsLondon(head.Number) && args.GasPrice == nil {
-			if args.MaxPriorityFeePerGas == nil {
-				tip, err := b.SuggestGasTipCap(ctx)
-				if err != nil {
-					return err
-				}
-				args.MaxPriorityFeePerGas = (*hexutil.Big)(tip)
-			}
-			if args.MaxFeePerGas == nil {
-				gasFeeCap := new(big.Int).Add(
-					(*big.Int)(args.MaxPriorityFeePerGas),
-					new(big.Int).Mul(head.BaseFee, big.NewInt(2)),
-				)
-				args.MaxFeePerGas = (*hexutil.Big)(gasFeeCap)
-			}
-			if args.MaxFeePerGas.ToInt().Cmp(args.MaxPriorityFeePerGas.ToInt()) < 0 {
-				return fmt.Errorf("maxFeePerGas (%v) < maxPriorityFeePerGas (%v)", args.MaxFeePerGas, args.MaxPriorityFeePerGas)
-			}
-		} else {
 			if args.MaxFeePerGas != nil || args.MaxPriorityFeePerGas != nil {
 				return errors.New("maxFeePerGas or maxPriorityFeePerGas specified but london is not active yet")
 			}
@@ -111,15 +92,15 @@ func (args *TransactionArgs) setDefaults(ctx context.Context, b Backend) error {
 				if err != nil {
 					return err
 				}
-				if b.ChainConfig().IsLondon(head.Number) {
-					// The legacy tx gas price suggestion should not add 2x base fee
-					// because all fees are consumed, so it would result in a spiral
-					// upwards.
-					price.Add(price, head.BaseFee)
-				}
+				// if b.ChainConfig().IsLondon(head.Number) {
+				// 	// The legacy tx gas price suggestion should not add 2x base fee
+				// 	// because all fees are consumed, so it would result in a spiral
+				// 	// upwards.
+				// 	price.Add(price, head.BaseFee)
+				// }
 				args.GasPrice = (*hexutil.Big)(price)
 			}
-		}
+		
 	} else {
 		// Both maxPriorityfee and maxFee set by caller. Sanity-check their internal relation
 		if args.MaxFeePerGas.ToInt().Cmp(args.MaxPriorityFeePerGas.ToInt()) < 0 {

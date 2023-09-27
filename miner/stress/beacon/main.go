@@ -92,7 +92,7 @@ type ethNode struct {
 	stack      *node.Node
 	enode      *enode.Node
 	api        *ethcatalyst.ConsensusAPI
-	ethBackend *eth.Ethereum
+	ethBackend *eth.Jumbochain
 	lapi       *lescatalyst.ConsensusAPI
 	lesBackend *les.LightEthereum
 }
@@ -103,7 +103,7 @@ func newNode(typ nodetype, genesis *core.Genesis, enodes []*enode.Node) *ethNode
 		api        *ethcatalyst.ConsensusAPI
 		lapi       *lescatalyst.ConsensusAPI
 		stack      *node.Node
-		ethBackend *eth.Ethereum
+		ethBackend *eth.Jumbochain
 		lesBackend *les.LightEthereum
 	)
 	// Start the node and wait until it's up
@@ -172,7 +172,7 @@ func (n *ethNode) insertBlock(eb beacon.ExecutableDataV1) error {
 	}
 	switch n.typ {
 	case eth2NormalNode, eth2MiningNode:
-		newResp, err := n.api.NewPayloadV1(eb)
+		newResp, err := n.api.ExecutePayloadV1(eb)
 		if err != nil {
 			return err
 		} else if newResp.Status != "VALID" {
@@ -447,7 +447,7 @@ func makeGenesis(faucets []*ecdsa.PrivateKey) *core.Genesis {
 
 	genesis.BaseFee = big.NewInt(params.InitialBaseFee)
 	genesis.Config = params.AllEthashProtocolChanges
-	genesis.Config.TerminalTotalDifficulty = transitionDifficulty
+	//genesis.Config.TerminalTotalDifficulty = transitionDifficulty
 
 	genesis.Alloc = core.GenesisAlloc{}
 	for _, faucet := range faucets {
@@ -458,7 +458,7 @@ func makeGenesis(faucets []*ecdsa.PrivateKey) *core.Genesis {
 	return genesis
 }
 
-func makeFullNode(genesis *core.Genesis) (*node.Node, *eth.Ethereum, *ethcatalyst.ConsensusAPI, error) {
+func makeFullNode(genesis *core.Genesis) (*node.Node, *eth.Jumbochain, *ethcatalyst.ConsensusAPI, error) {
 	// Define the basic configurations for the Ethereum node
 	datadir, _ := os.MkdirTemp("", "")
 

@@ -18,12 +18,10 @@ package main
 
 import (
 	"fmt"
-	"path/filepath"
 	"strings"
 
 	"gopkg.in/urfave/cli.v1"
 	"jumbochain.org/cmd/utils"
-	"jumbochain.org/common"
 	"jumbochain.org/console"
 	"jumbochain.org/node"
 	"jumbochain.org/rpc"
@@ -36,12 +34,12 @@ var (
 		Action:   utils.MigrateFlags(localConsole),
 		Name:     "console",
 		Usage:    "Start an interactive JavaScript environment",
-		Flags:    utils.GroupFlags(nodeFlags, rpcFlags, consoleFlags),
+		Flags:    append(append(nodeFlags, rpcFlags...), consoleFlags...),
 		Category: "CONSOLE COMMANDS",
 		Description: `
 The Geth console is an interactive shell for the JavaScript runtime environment
 which exposes a node admin interface as well as the Ðapp JavaScript API.
-See https://geth.ethereum.org/docs/interface/javascript-console.`,
+See https://geth.ethereum.org/docs/interacting-with-geth/javascript-console.`,
 	}
 
 	attachCommand = cli.Command{
@@ -49,12 +47,12 @@ See https://geth.ethereum.org/docs/interface/javascript-console.`,
 		Name:      "attach",
 		Usage:     "Start an interactive JavaScript environment (connect to node)",
 		ArgsUsage: "[endpoint]",
-		Flags:     utils.GroupFlags([]cli.Flag{utils.DataDirFlag}, consoleFlags),
+		Flags:     append(consoleFlags, utils.DataDirFlag),
 		Category:  "CONSOLE COMMANDS",
 		Description: `
 The Geth console is an interactive shell for the JavaScript runtime environment
 which exposes a node admin interface as well as the Ðapp JavaScript API.
-See https://geth.ethereum.org/docs/interface/javascript-console.
+See https://geth.ethereum.org/docs/interacting-with-geth/javascript-console.
 This command allows to open a console on a running geth node.`,
 	}
 
@@ -63,11 +61,11 @@ This command allows to open a console on a running geth node.`,
 		Name:      "js",
 		Usage:     "Execute the specified JavaScript files",
 		ArgsUsage: "<jsfile> [jsfile...]",
-		Flags:     utils.GroupFlags(nodeFlags, consoleFlags),
+		Flags:     append(nodeFlags, consoleFlags...),
 		Category:  "CONSOLE COMMANDS",
 		Description: `
 The JavaScript VM exposes a node admin interface as well as the Ðapp
-JavaScript API. See https://geth.ethereum.org/docs/interface/javascript-console`,
+JavaScript API. See https://geth.ethereum.org/docs/interacting-with-geth/javascript-console`,
 	}
 )
 
@@ -124,26 +122,6 @@ func remoteConsole(ctx *cli.Context) error {
 		path := node.DefaultDataDir()
 		if ctx.GlobalIsSet(utils.DataDirFlag.Name) {
 			path = ctx.GlobalString(utils.DataDirFlag.Name)
-		}
-		if path != "" {
-			if ctx.GlobalBool(utils.RopstenFlag.Name) {
-				// Maintain compatibility with older Geth configurations storing the
-				// Ropsten database in `testnet` instead of `ropsten`.
-				legacyPath := filepath.Join(path, "testnet")
-				if common.FileExist(legacyPath) {
-					path = legacyPath
-				} else {
-					path = filepath.Join(path, "ropsten")
-				}
-			} else if ctx.GlobalBool(utils.RinkebyFlag.Name) {
-				path = filepath.Join(path, "rinkeby")
-			} else if ctx.GlobalBool(utils.GoerliFlag.Name) {
-				path = filepath.Join(path, "goerli")
-			} else if ctx.GlobalBool(utils.SepoliaFlag.Name) {
-				path = filepath.Join(path, "sepolia")
-			} else if ctx.GlobalBool(utils.KilnFlag.Name) {
-				path = filepath.Join(path, "kiln")
-			}
 		}
 		endpoint = fmt.Sprintf("%s/geth.ipc", path)
 	}

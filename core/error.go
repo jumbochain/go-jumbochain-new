@@ -86,6 +86,9 @@ var (
 	// in the tip field.
 	ErrTipVeryHigh = errors.New("max priority fee per gas higher than 2^256-1")
 
+	// ErrDiffLayerNotFound is returned when diff layer not found.
+	ErrDiffLayerNotFound = errors.New("diff layer not found")
+
 	// ErrFeeCapVeryHigh is a sanity error to avoid extremely big numbers specified
 	// in the fee cap field.
 	ErrFeeCapVeryHigh = errors.New("max fee per gas higher than 2^256-1")
@@ -93,6 +96,8 @@ var (
 	// ErrFeeCapTooLow is returned if the transaction fee cap is less than the
 	// the base fee of the block.
 	ErrFeeCapTooLow = errors.New("max fee per gas less than block base fee")
+
+	ErrCurrentBlockNotFound = errors.New("current block not found")
 
 	// ErrSenderNoEOA is returned if the sender of a transaction is a contract.
 	ErrSenderNoEOA = errors.New("sender not an eoa")
