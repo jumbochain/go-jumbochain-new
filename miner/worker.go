@@ -1262,7 +1262,7 @@ func (w *worker) commit(env *environment, interval func(), update bool, start ti
 		finalizeBlockTimer.UpdateSince(finalizeStart)
 
 		// Create a local environment copy, avoid the data race with snapshot state.
-		// https://github.com/ethereum/go-ethereum/issues/24299
+
 		env := env.copy()
 
 		// If we're post merge, just ignore

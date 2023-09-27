@@ -16,7 +16,6 @@
 
 //go:build !cgo && !windows
 // +build !cgo,!windows
-
 package rpc
 
 var (
