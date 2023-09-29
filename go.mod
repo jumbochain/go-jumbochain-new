@@ -1,6 +1,7 @@
 module jumbochain.org
 
 go 1.16
+replace jumbochain.org => github.com/jumbochain/go-jumbochain-new
 
 require (
 	github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v0.3.0
