@@ -1,7 +1,6 @@
 module jumbochain.org
 
 go 1.16
-replace jumbochain.org => github.com/jumbochain/go-jumbochain-new
 
 require (
 	github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v0.3.0
@@ -53,6 +52,7 @@ require (
 	github.com/onsi/gomega v1.27.8 // indirect
 	github.com/peterh/liner v1.1.1-0.20190123174540-a2c9a5303de7
 	github.com/prometheus/tsdb v0.7.1
+	github.com/protolambda/bls12-381-util v0.0.0-20220416220906-d8552aa452c7
 	github.com/rjeczalik/notify v0.9.1
 	github.com/rs/cors v1.7.0
 	github.com/shirou/gopsutil v3.21.4-0.20210419000835-c7a38de76ee5+incompatible
@@ -70,4 +70,5 @@ require (
 	google.golang.org/protobuf v1.31.0 // indirect
 	gopkg.in/natefinch/npipe.v2 v2.0.0-20160621034901-c1b8fa8bdcce
 	gopkg.in/urfave/cli.v1 v1.20.0
+	gopkg.in/yaml.v3 v3.0.1
 )
